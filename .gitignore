@@ -1,0 +1,21 @@
+# Environment
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+build/
+
+# IDE
+.vscode/
+.DS_Store
+
+# Google API secrets
+credentials.json
+token.json
