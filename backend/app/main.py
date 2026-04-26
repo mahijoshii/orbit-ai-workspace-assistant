@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.calendar import router as calendar_router
 from app.auth import router as auth_router
 from app.config import FRONTEND_URL
 
@@ -26,3 +26,4 @@ def health():
 
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(calendar_router, prefix="/calendar", tags=["calendar"])

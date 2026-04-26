@@ -90,13 +90,13 @@ orbit-ai-workspace-assistant/
 - [x] Store user tokens locally
 - [x] Add health check route
 
-### Phase 4 — Calendar Integration (CURRENT)
-- [ ] Fetch calendar events
-- [ ] Detect free time blocks
-- [ ] Create calendar events
-- [ ] Update/delete events
+### Phase 4 — Calendar Integration 
+- [x] Fetch calendar events
+- [x] Detect free time blocks
+- [x] Create calendar events
+- [x] Smart scheduling
 
-### Phase 5 — Gmail Integration
+### Phase 5 — Gmail Integration (CURRENT)
 - [ ] Fetch email threads
 - [ ] Detect follow-ups
 - [ ] Generate replies
@@ -172,7 +172,7 @@ Coming soon.
 
 ## Status
 
-Currently building: Calendar Integration (Phase 4)
+🚧 Currently building: **Gmail Integration (Phase 5)**
 
 ---
 
