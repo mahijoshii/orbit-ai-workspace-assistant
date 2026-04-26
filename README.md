@@ -83,14 +83,14 @@ orbit-ai-workspace-assistant/
 - [x] Add redirect URI
 - [x] Store credentials locally
 
-### Phase 3 — Backend Foundation (CURRENT)
-- [ ] Set up FastAPI app
-- [ ] Add Google OAuth login
-- [ ] Add OAuth callback handler
-- [ ] Store user tokens locally
-- [ ] Add health check route
+### Phase 3 — Backend Foundation 
+- [x] Set up FastAPI app
+- [x] Add Google OAuth login
+- [x] Add OAuth callback handler
+- [x] Store user tokens locally
+- [x] Add health check route
 
-### Phase 4 — Calendar Integration
+### Phase 4 — Calendar Integration (CURRENT)
 - [ ] Fetch calendar events
 - [ ] Detect free time blocks
 - [ ] Create calendar events
@@ -172,7 +172,7 @@ Coming soon.
 
 ## Status
 
-Currently building Phase 3: backend + Google OAuth login.
+Currently building: Calendar Integration (Phase 4)
 
 ---
 
