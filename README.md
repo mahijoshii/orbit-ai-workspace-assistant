@@ -96,13 +96,13 @@ orbit-ai-workspace-assistant/
 - [x] Create calendar events
 - [x] Smart scheduling
 
-### Phase 5 — Gmail Integration (CURRENT)
-- [ ] Fetch email threads
-- [ ] Detect follow-ups
-- [ ] Generate replies
-- [ ] Create drafts
+### Phase 5 — Gmail Integration 
+- [x] Fetch email threads
+- [x] Detect follow-ups
+- [x] Generate replies
+- [x] Create drafts
 
-### Phase 6 — AI Planning Engine
+### Phase 6 — AI Planning Engine (CURRENT)
 - [ ] Parse natural-language tasks
 - [ ] Rank tasks by priority
 - [ ] Schedule tasks into calendar
@@ -172,7 +172,7 @@ Coming soon.
 
 ## Status
 
-🚧 Currently building: **Gmail Integration (Phase 5)**
+🚧 Currently building: **AI Planning Engine (Phase 6)**
 
 ---
 
