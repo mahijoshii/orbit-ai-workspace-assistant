@@ -108,7 +108,6 @@ orbit-ai-workspace-assistant/
 - [x] Rank tasks by priority
 - [x] Schedule tasks into free calendar blocks
 - [x] Commit approved plans to Google Calendar
-- [ ] Explain planning decisions
 
 ### Phase 7 — Smarter Scheduling Intelligence (CURRENT)
 - [ ] Avoid awkward scheduling times
