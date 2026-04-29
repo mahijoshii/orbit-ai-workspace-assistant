@@ -4,6 +4,7 @@ from app.calendar import router as calendar_router
 from app.auth import router as auth_router
 from app.config import FRONTEND_URL
 from app.gmail import router as gmail_router
+from app.planner import router as planner_router
 
 app = FastAPI(title="Orbit API")
 
@@ -29,3 +30,4 @@ def health():
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(calendar_router, prefix="/calendar", tags=["calendar"])
 app.include_router(gmail_router, prefix="/gmail", tags=["gmail"])
+app.include_router(planner_router, prefix="/planner", tags=["planner"])
