@@ -26,14 +26,14 @@ Orbit acts as an intelligent planning layer that sits on top of Gmail and Calend
 
 ## Core Features
 
-- Google OAuth login
-- Google Calendar integration
-- Gmail follow-up detection
-- AI-generated daily planning
-- Natural-language task scheduling
-- Calendar event creation
-- Approval-first workflow
-- AI-generated plan approval and calendar commit flow
+- Google OAuth authentication with secure token handling
+- Calendar-aware scheduling using real-time availability from Google Calendar
+- Gmail-based follow-up detection and draft generation
+- Natural-language task parsing using Gemini API
+- AI-powered daily planning with priority, deadline, and task-type awareness
+- Constraint-based scheduling with buffers, chunking, and time-of-day optimization
+- Approval-first workflow before committing actions
+- Automated calendar execution via Google APIs
 
 ---
 
@@ -47,6 +47,7 @@ Orbit acts as an intelligent planning layer that sits on top of Gmail and Calend
 | AI | Gemini API |
 | Auth | Google OAuth 2.0 |
 | Deployment | TBD |
+| Intelligence | Task parsing, scheduling heuristics, constraint optimization |
 
 ---
 
@@ -159,17 +160,29 @@ The MVP allows a user to:
 
 ## What Works Today
 
-- Google OAuth login flow
-- FastAPI backend
-- Google Calendar event fetching
-- Free-time detection
-- Google Calendar event creation
-- Gmail message retrieval
-- Gmail follow-up detection
-- Gmail draft creation
-- AI task parsing with Gemini
-- Priority-based plan generation
-- Approved plan commit flow into Google Calendar
+Orbit is a fully functional AI scheduling system that:
+
+- Authenticates users via Google OAuth
+- Reads and writes real Google Calendar events
+- Extracts and analyzes Gmail threads for follow-ups
+- Converts natural-language input into structured tasks using Gemini
+- Generates optimized daily plans based on free time, priority, and constraints
+- Applies smart scheduling rules including buffers, chunking, and time-of-day fit
+- Commits approved plans directly into Google Calendar
+
+---
+
+## Why This Project Matters
+
+Orbit goes beyond simple task management by combining natural language understanding, real-world constraints, and API execution into a single system.
+
+It demonstrates how AI can move from suggestion to action by:
+- interpreting user intent
+- reasoning about time and constraints
+- optimizing decisions
+- executing workflows across real applications
+
+This mirrors the architecture of modern AI agents and productivity tools.
 
 ---
 

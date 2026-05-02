@@ -20,6 +20,11 @@ PRIORITY_ORDER = {
     "low": 2,
 }
 
+FOCUS_KEYWORDS = ["study", "write", "build", "code", "assignment", "project", "research"]
+ADMIN_KEYWORDS = ["email", "reply", "message", "follow up", "follow-up", "inbox"]
+PERSONAL_KEYWORDS = ["gym", "run", "workout", "meal", "cook", "walk"]
+URGENT_DEADLINES = ["today", "tonight", "asap", "urgent"]
+
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -66,6 +71,56 @@ def split_task_into_chunks(task: dict):
         duration_minutes -= chunk
 
     return chunks
+
+
+def infer_task_type(task: dict):
+    text = f"{task.get('title', '')} {task.get('deadline', '')}".lower()
+
+    if any(keyword in text for keyword in FOCUS_KEYWORDS):
+        return "focus"
+    if any(keyword in text for keyword in ADMIN_KEYWORDS):
+        return "admin"
+    if any(keyword in text for keyword in PERSONAL_KEYWORDS):
+        return "personal"
+
+    return "general"
+
+
+def deadline_score(task: dict):
+    deadline = str(task.get("deadline", "")).lower()
+
+    if any(word in deadline for word in URGENT_DEADLINES):
+        return 0
+
+    return 1
+
+
+def score_slot(task_type: str, start_time: datetime):
+    hour = start_time.hour
+
+    if task_type == "focus":
+        if 9 <= hour <= 13:
+            return 0
+        if 14 <= hour <= 17:
+            return 1
+        return 3
+
+    if task_type == "admin":
+        if 11 <= hour <= 16:
+            return 0
+        return 2
+
+    if task_type == "personal":
+        if 16 <= hour <= 20:
+            return 0
+        if 12 <= hour <= 15:
+            return 1
+        return 3
+
+    if 9 <= hour <= 18:
+        return 1
+
+    return 3
 
 
 @router.post("/parse-tasks")
@@ -123,8 +178,12 @@ def generate_plan(input_data: PlanInput):
     scheduled = []
     unscheduled = []
 
+    for task in tasks:
+        task["task_type"] = infer_task_type(task)
+
     tasks.sort(
         key=lambda task: (
+            deadline_score(task),
             PRIORITY_ORDER.get(task.get("priority", "medium"), 1),
             int(task.get("duration_minutes", 30)),
         )
@@ -146,39 +205,54 @@ def generate_plan(input_data: PlanInput):
             buffer = timedelta(minutes=TASK_BUFFER_MINUTES)
             placed = False
 
-            for block in available_blocks:
+            candidate_slots = []
+
+            for block_index, block in enumerate(available_blocks):
                 available_duration = block["end"] - block["start"]
 
                 if available_duration >= duration + buffer:
-                    task_start = block["start"] + buffer
-                    task_end = task_start + duration
+                    proposed_start = block["start"] + buffer
+                    proposed_end = proposed_start + duration
 
-                    title = task["title"]
-                    if len(chunks) > 1:
-                        title = f"{task['title']} ({index + 1}/{len(chunks)})"
-
-                    scheduled.append(
+                    candidate_slots.append(
                         {
-                            "title": title,
-                            "priority": task["priority"],
-                            "duration_minutes": chunk_minutes,
-                            "deadline": task.get("deadline"),
-                            "start": task_start.isoformat(),
-                            "end": task_end.isoformat(),
-                            "reason": "Scheduled based on priority, available free time, and buffer-aware planning.",
+                            "block_index": block_index,
+                            "start": proposed_start,
+                            "end": proposed_end,
+                            "score": score_slot(task["task_type"], proposed_start),
                         }
                     )
 
-                    block["start"] = task_end
-                    placed = True
-                    break
+            if candidate_slots:
+                best_slot = min(candidate_slots, key=lambda slot: slot["score"])
+                block = available_blocks[best_slot["block_index"]]
+
+                title = task["title"]
+                if len(chunks) > 1:
+                    title = f"{task['title']} ({index + 1}/{len(chunks)})"
+
+                scheduled.append(
+                    {
+                        "title": title,
+                        "priority": task["priority"],
+                        "task_type": task["task_type"],
+                        "duration_minutes": chunk_minutes,
+                        "deadline": task.get("deadline"),
+                        "start": best_slot["start"].isoformat(),
+                        "end": best_slot["end"].isoformat(),
+                        "reason": f"Scheduled as a {task['task_type']} task using priority, deadline, buffer, and time-of-day fit.",
+                    }
+                )
+
+                block["start"] = best_slot["end"]
+                placed = True
 
             if not placed:
                 unscheduled.append(
                     {
                         **task,
                         "duration_minutes": chunk_minutes,
-                        "reason": "No free block was large enough after applying buffer rules.",
+                        "reason": "No free block was large enough after applying buffer and task-fit rules.",
                     }
                 )
 
@@ -190,6 +264,7 @@ def generate_plan(input_data: PlanInput):
             "max_task_chunk_minutes": MAX_TASK_CHUNK_MINUTES,
             "task_buffer_minutes": TASK_BUFFER_MINUTES,
             "priority_order": PRIORITY_ORDER,
+            "task_types": ["focus", "admin", "personal", "general"],
         },
     }
 
