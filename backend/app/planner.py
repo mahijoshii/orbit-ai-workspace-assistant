@@ -11,6 +11,15 @@ from app.calendar import get_free_time, get_calendar_service
 
 router = APIRouter()
 
+MAX_TASK_CHUNK_MINUTES = 90
+TASK_BUFFER_MINUTES = 10
+
+PRIORITY_ORDER = {
+    "high": 0,
+    "medium": 1,
+    "low": 2,
+}
+
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -41,6 +50,22 @@ def clean_json_response(raw_text: str):
     cleaned = re.sub(r"^```", "", cleaned)
     cleaned = re.sub(r"```$", "", cleaned)
     return cleaned.strip()
+
+
+def split_task_into_chunks(task: dict):
+    duration_minutes = int(task["duration_minutes"])
+
+    if duration_minutes <= MAX_TASK_CHUNK_MINUTES:
+        return [duration_minutes]
+
+    chunks = []
+
+    while duration_minutes > 0:
+        chunk = min(MAX_TASK_CHUNK_MINUTES, duration_minutes)
+        chunks.append(chunk)
+        duration_minutes -= chunk
+
+    return chunks
 
 
 @router.post("/parse-tasks")
@@ -98,8 +123,12 @@ def generate_plan(input_data: PlanInput):
     scheduled = []
     unscheduled = []
 
-    priority_order = {"high": 0, "medium": 1, "low": 2}
-    tasks.sort(key=lambda task: priority_order.get(task.get("priority", "medium"), 1))
+    tasks.sort(
+        key=lambda task: (
+            PRIORITY_ORDER.get(task.get("priority", "medium"), 1),
+            int(task.get("duration_minutes", 30)),
+        )
+    )
 
     available_blocks = [
         {
@@ -110,36 +139,58 @@ def generate_plan(input_data: PlanInput):
     ]
 
     for task in tasks:
-        duration = timedelta(minutes=int(task["duration_minutes"]))
-        placed = False
+        chunks = split_task_into_chunks(task)
 
-        for block in available_blocks:
-            if block["end"] - block["start"] >= duration:
-                task_start = block["start"]
-                task_end = task_start + duration
+        for index, chunk_minutes in enumerate(chunks):
+            duration = timedelta(minutes=chunk_minutes)
+            buffer = timedelta(minutes=TASK_BUFFER_MINUTES)
+            placed = False
 
-                scheduled.append(
+            for block in available_blocks:
+                available_duration = block["end"] - block["start"]
+
+                if available_duration >= duration + buffer:
+                    task_start = block["start"] + buffer
+                    task_end = task_start + duration
+
+                    title = task["title"]
+                    if len(chunks) > 1:
+                        title = f"{task['title']} ({index + 1}/{len(chunks)})"
+
+                    scheduled.append(
+                        {
+                            "title": title,
+                            "priority": task["priority"],
+                            "duration_minutes": chunk_minutes,
+                            "deadline": task.get("deadline"),
+                            "start": task_start.isoformat(),
+                            "end": task_end.isoformat(),
+                            "reason": "Scheduled based on priority, available free time, and buffer-aware planning.",
+                        }
+                    )
+
+                    block["start"] = task_end
+                    placed = True
+                    break
+
+            if not placed:
+                unscheduled.append(
                     {
-                        "title": task["title"],
-                        "priority": task["priority"],
-                        "duration_minutes": task["duration_minutes"],
-                        "deadline": task.get("deadline"),
-                        "start": task_start.isoformat(),
-                        "end": task_end.isoformat(),
+                        **task,
+                        "duration_minutes": chunk_minutes,
+                        "reason": "No free block was large enough after applying buffer rules.",
                     }
                 )
-
-                block["start"] = task_end
-                placed = True
-                break
-
-        if not placed:
-            unscheduled.append(task)
 
     return {
         "scheduled": scheduled,
         "unscheduled": unscheduled,
         "free_blocks_used": free_blocks,
+        "rules_applied": {
+            "max_task_chunk_minutes": MAX_TASK_CHUNK_MINUTES,
+            "task_buffer_minutes": TASK_BUFFER_MINUTES,
+            "priority_order": PRIORITY_ORDER,
+        },
     }
 
 

@@ -110,11 +110,11 @@ orbit-ai-workspace-assistant/
 - [x] Commit approved plans to Google Calendar
 
 ### Phase 7 — Smarter Scheduling Intelligence (CURRENT)
-- [ ] Avoid awkward scheduling times
-- [ ] Add buffers between tasks
-- [ ] Split long tasks into chunks
-- [ ] Improve priority and deadline handling
-- [ ] Add smarter task-type scheduling
+- [x] Avoid awkward scheduling times
+- [x] Add buffers between tasks
+- [x] Split long tasks into chunks
+- [x] Improve priority and deadline handling
+- [x] Add smarter task-type scheduling
 
 ### Phase 8 — Frontend Dashboard
 - [ ] Build React UI
@@ -200,7 +200,7 @@ Coming soon.
 
 ## Status
 
-🚧 Currently building: **Smarter Scheduling Intelligence (Phase 7)**
+🚧 Currently building: **Frontend Dashboard (Phase 8)**
 
 ---
 
