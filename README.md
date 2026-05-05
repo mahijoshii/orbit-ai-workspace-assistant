@@ -32,7 +32,8 @@ Orbit acts as an intelligent planning layer that sits on top of Gmail and Calend
 - Natural-language task parsing using Gemini API
 - AI-powered daily planning with priority, deadline, and task-type awareness
 - Constraint-based scheduling with buffers, chunking, and time-of-day optimization
-- Approval-first workflow before committing actions
+- Approval-first workflow with editable schedules before committing actions
+- Manual task adjustment and per-task calendar commit support
 - Automated calendar execution via Google APIs
 
 ---
@@ -119,20 +120,24 @@ orbit-ai-workspace-assistant/
 - [x] Schedule tasks into free calendar blocks
 - [x] Commit approved plans to Google Calendar
 
-### Phase 7 — Smarter Scheduling Intelligence (CURRENT)
+### Phase 7 — Smarter Scheduling Intelligence
 - [x] Avoid awkward scheduling times
 - [x] Add buffers between tasks
 - [x] Split long tasks into chunks
 - [x] Improve priority and deadline handling
 - [x] Add smarter task-type scheduling
+- [ ] Respect explicit user-provided scheduling constraints
+- [ ] Add personalized scheduling preferences
 
 ### Phase 8 — Frontend Dashboard (CURRENT)
 - [x] Build React + TypeScript dashboard
 - [x] Connect frontend to FastAPI backend
 - [x] Generate AI-powered daily plans from the UI
 - [x] Commit approved plans into Google Calendar
+- [ ] Allow manual task editing before calendar commit
+- [ ] Support committing individual tasks instead of full schedules
 - [ ] Display Google Calendar timeline
-- [ ] Display Gmail follow-ups
+- [ ] Display Gmail follow-ups requiring responses
 - [ ] Add drag-and-drop scheduling
 
 ### Phase 9 — Product Polish
@@ -181,6 +186,8 @@ Orbit is a fully functional AI scheduling system that:
 - Applies smart scheduling rules including buffers, chunking, and time-of-day fit
 - Commits approved plans directly into Google Calendar
 - Provides a live frontend dashboard for generating and approving AI schedules
+- Supports approval-first scheduling before modifying Google Calendar
+- Applies task chunking, buffers, and time-of-day scheduling heuristics
 
 ---
 
@@ -195,6 +202,17 @@ It demonstrates how AI can move from suggestion to action by:
 - executing workflows across real applications
 
 This mirrors the architecture of modern AI agents and productivity tools.
+
+---
+
+## Planned Intelligence Improvements
+
+- Respect explicit user scheduling constraints from natural-language prompts
+- Allow users to manually adjust AI-generated schedules before commit
+- Support committing individual tasks instead of entire schedules
+- Detect unanswered Gmail threads and surface follow-up recommendations
+- Learn personalized scheduling preferences over time
+- Add contextual task placement based on workload and calendar density
 
 ---
 
@@ -237,7 +255,7 @@ Coming soon.
 
 ## Status
 
-🚧 Currently building: **Frontend Intelligence + UX Polish (Phase 8)**
+🚧 Currently building: **Human-in-the-loop Scheduling + Workspace UX (Phase 8)**
 
 ---
 
