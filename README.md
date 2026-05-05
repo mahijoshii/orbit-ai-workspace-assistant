@@ -51,6 +51,15 @@ Orbit acts as an intelligent planning layer that sits on top of Gmail and Calend
 
 ---
 
+## Planned Deployment
+
+- Frontend: Vercel
+- Backend API: Render or Railway
+- OAuth + Google APIs: Google Cloud Platform
+
+---
+
+
 ## Project Structure
 
 ```txt
@@ -117,12 +126,14 @@ orbit-ai-workspace-assistant/
 - [x] Improve priority and deadline handling
 - [x] Add smarter task-type scheduling
 
-### Phase 8 — Frontend Dashboard
-- [ ] Build React UI
-- [ ] Display daily plan
-- [ ] Display calendar
-- [ ] Display follow-ups
-- [ ] Add approve/reject actions
+### Phase 8 — Frontend Dashboard (CURRENT)
+- [x] Build React + TypeScript dashboard
+- [x] Connect frontend to FastAPI backend
+- [x] Generate AI-powered daily plans from the UI
+- [x] Commit approved plans into Google Calendar
+- [ ] Display Google Calendar timeline
+- [ ] Display Gmail follow-ups
+- [ ] Add drag-and-drop scheduling
 
 ### Phase 9 — Product Polish
 - [ ] Add assistant UI
@@ -169,6 +180,7 @@ Orbit is a fully functional AI scheduling system that:
 - Generates optimized daily plans based on free time, priority, and constraints
 - Applies smart scheduling rules including buffers, chunking, and time-of-day fit
 - Commits approved plans directly into Google Calendar
+- Provides a live frontend dashboard for generating and approving AI schedules
 
 ---
 
@@ -205,6 +217,18 @@ This mirrors the architecture of modern AI agents and productivity tools.
 
 ---
 
+## Example Workflow
+
+1. User logs in with Google OAuth
+2. Orbit fetches Gmail and Calendar context
+3. User enters tasks in natural language
+4. Gemini converts tasks into structured planning objects
+5. Orbit detects free time and optimizes scheduling
+6. User reviews the generated plan
+7. Orbit commits approved tasks directly into Google Calendar
+
+---
+
 ## Demo
 
 Coming soon.
@@ -213,7 +237,7 @@ Coming soon.
 
 ## Status
 
-🚧 Currently building: **Frontend Dashboard (Phase 8)**
+🚧 Currently building: **Frontend Intelligence + UX Polish (Phase 8)**
 
 ---
 
