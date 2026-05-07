@@ -63,9 +63,47 @@ function App() {
       setCommitMessage(
         `Committed ${res.data.created_count} tasks to Google Calendar.`
       );
+
+      setScheduled([]);
     } catch (error) {
       console.error(error);
       alert("Failed to commit plan. Check your backend terminal.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTask = (
+    index: number,
+    field: keyof ScheduledTask,
+    value: string
+  ) => {
+    const updated = [...scheduled];
+
+    updated[index] = {
+      ...updated[index],
+      [field]: field === "duration_minutes" ? Number(value) : value,
+    };
+
+    setScheduled(updated);
+  };
+
+  const commitSingleTask = async (task: ScheduledTask, index: number) => {
+    setLoading(true);
+
+    try {
+      const res = await axios.post(`${API_BASE}/planner/commit-task`, {
+        task,
+      });
+
+      setCommitMessage(`Committed "${res.data.title}" to Google Calendar.`);
+
+      const updated = [...scheduled];
+      updated.splice(index, 1);
+      setScheduled(updated);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to commit task. Check your backend terminal.");
     } finally {
       setLoading(false);
     }
@@ -76,6 +114,23 @@ function App() {
       hour: "numeric",
       minute: "2-digit",
     });
+  };
+
+  const formatDateTimeLocal = (iso: string) => {
+    const date = new Date(iso);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const convertLocalToISO = (value: string) => {
+    return new Date(value).toISOString();
   };
 
   return (
@@ -117,7 +172,7 @@ function App() {
               onClick={commitPlan}
               disabled={loading || scheduled.length === 0}
             >
-              Commit to Calendar
+              Commit Full Plan
             </button>
           </div>
 
@@ -128,7 +183,7 @@ function App() {
       <section className="dashboard">
         <div className="section-header">
           <h2>Generated Plan</h2>
-          <p>Review first. Commit only when it looks right.</p>
+          <p>Edit tasks first, then commit one task or the full schedule.</p>
         </div>
 
         {scheduled.length === 0 ? (
@@ -139,13 +194,61 @@ function App() {
               <div className="task-card" key={`${task.title}-${index}`}>
                 <div className="task-top">
                   <span className="pill">{task.priority}</span>
-                  {task.task_type && <span className="pill muted">{task.task_type}</span>}
+                  {task.task_type && (
+                    <span className="pill muted">{task.task_type}</span>
+                  )}
                 </div>
-                <h3>{task.title}</h3>
+
+                <label className="mini-label">Task</label>
+                <input
+                  className="task-input"
+                  value={task.title}
+                  onChange={(e) => updateTask(index, "title", e.target.value)}
+                />
+
+                <label className="mini-label">Duration minutes</label>
+                <input
+                  className="task-input"
+                  type="number"
+                  value={task.duration_minutes}
+                  onChange={(e) =>
+                    updateTask(index, "duration_minutes", e.target.value)
+                  }
+                />
+
+                <label className="mini-label">Start</label>
+                <input
+                  className="task-input"
+                  type="datetime-local"
+                  value={formatDateTimeLocal(task.start)}
+                  onChange={(e) =>
+                    updateTask(index, "start", convertLocalToISO(e.target.value))
+                  }
+                />
+
+                <label className="mini-label">End</label>
+                <input
+                  className="task-input"
+                  type="datetime-local"
+                  value={formatDateTimeLocal(task.end)}
+                  onChange={(e) =>
+                    updateTask(index, "end", convertLocalToISO(e.target.value))
+                  }
+                />
+
                 <p className="time">
                   {formatTime(task.start)} - {formatTime(task.end)}
                 </p>
+
                 <p className="reason">{task.reason}</p>
+
+                <button
+                  className="commit-one-btn"
+                  onClick={() => commitSingleTask(task, index)}
+                  disabled={loading}
+                >
+                  Commit this task
+                </button>
               </div>
             ))}
           </div>

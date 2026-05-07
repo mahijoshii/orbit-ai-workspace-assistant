@@ -49,6 +49,10 @@ class CommitPlanInput(BaseModel):
     scheduled: list[ScheduledTask]
 
 
+class CommitTaskInput(BaseModel):
+    task: ScheduledTask
+
+
 def clean_json_response(raw_text: str):
     cleaned = raw_text.strip()
     cleaned = re.sub(r"^```json", "", cleaned)
@@ -313,4 +317,42 @@ def commit_plan(input_data: CommitPlanInput):
         "message": "Plan committed successfully",
         "created_count": len(created_events),
         "created_events": created_events,
+    }
+
+
+@router.post("/commit-task")
+def commit_task(input_data: CommitTaskInput):
+    service = get_calendar_service()
+    task = input_data.task
+
+    event_body = {
+        "summary": task.title,
+        "description": (
+            "Scheduled by Orbit AI Workspace Assistant.\n"
+            f"Priority: {task.priority}\n"
+            f"Estimated duration: {task.duration_minutes} minutes"
+        ),
+        "start": {
+            "dateTime": task.start,
+            "timeZone": "America/Toronto",
+        },
+        "end": {
+            "dateTime": task.end,
+            "timeZone": "America/Toronto",
+        },
+    }
+
+    created_event = (
+        service.events()
+        .insert(calendarId="primary", body=event_body)
+        .execute()
+    )
+
+    return {
+        "message": "Task committed successfully",
+        "title": task.title,
+        "event_id": created_event.get("id"),
+        "html_link": created_event.get("htmlLink"),
+        "start": task.start,
+        "end": task.end,
     }

@@ -233,3 +233,31 @@ button:disabled {
     padding-right: 24px;
   }
 }
+
+.mini-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+.task-input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.task-input:focus {
+  border-color: #7c3aed;
+}
+
+.commit-one-btn {
+  margin-top: 14px;
+  width: 100%;
+  background: #5b21b6;
+}
