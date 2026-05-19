@@ -251,39 +251,48 @@ function App() {
     return new Date(value).toISOString();
   };
 
-  const getCalendarEventType = (title: string) => {
-    const text = title.toLowerCase();
+const getCalendarEventType = (title: string) => {
+  const text = title.toLowerCase();
 
-    if (
-      text.includes("study") ||
-      text.includes("code") ||
-      text.includes("ece") ||
-      text.includes("assignment") ||
-      text.includes("project")
-    ) {
-      return "focus";
-    }
+  if (
+    text.includes("study") ||
+    text.includes("code") ||
+    text.includes("ece") ||
+    text.includes("assignment") ||
+    text.includes("project") ||
+    text.includes("work") ||
+    text.includes("office") ||
+    text.includes("amplify")
+  ) {
+    return "focus";
+  }
 
-    if (
-      text.includes("email") ||
-      text.includes("reply") ||
-      text.includes("follow")
-    ) {
-      return "admin";
-    }
+  if (
+    text.includes("email") ||
+    text.includes("reply") ||
+    text.includes("follow") ||
+    text.includes("meeting") ||
+    text.includes("call")
+  ) {
+    return "admin";
+  }
 
-    if (
-      text.includes("gym") ||
-      text.includes("run") ||
-      text.includes("workout") ||
-      text.includes("glutes") ||
-      text.includes("legs")
-    ) {
-      return "personal";
-    }
+  if (
+    text.includes("gym") ||
+    text.includes("run") ||
+    text.includes("workout") ||
+    text.includes("glutes") ||
+    text.includes("legs") ||
+    text.includes("walk") ||
+    text.includes("lunch") ||
+    text.includes("cardio") ||
+    text.includes("core")
+  ) {
+    return "personal";
+  }
 
-    return "general";
-  };
+  return "general";
+};
 
   const sortedCalendarEvents = [...calendarEvents].sort(
     (a, b) =>
@@ -456,8 +465,6 @@ function App() {
                 <p className="time">
                   {formatTime(task.start)} - {formatTime(task.end)}
                 </p>
-
-                <p className="reason">{task.reason}</p>
 
                 <button
                   className="commit-one-btn"
