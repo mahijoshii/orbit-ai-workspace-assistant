@@ -479,13 +479,28 @@ const getCalendarEventType = (title: string) => {
         )}
 
         {unscheduled.length > 0 && (
-          <div className="unscheduled">
-            <h3>Unscheduled</h3>
+        <div className="unscheduled">
+          <h3>Unscheduled Tasks</h3>
+          <p className="unscheduled-subtitle">
+            Orbit could not fit these into today's free calendar blocks.
+          </p>
+
+          <div className="unscheduled-list">
             {unscheduled.map((task, index) => (
-              <p key={index}>{task.title}</p>
+              <div className="unscheduled-item" key={`${task.title}-${index}`}>
+                <div>
+                  <strong>{task.title}</strong>
+                  <p>{task.reason || "No available time block was large enough."}</p>
+                </div>
+
+                {task.duration_minutes && (
+                  <span>{task.duration_minutes} min</span>
+                )}
+              </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
       </section>
 
       <section className="dashboard workspace-section">

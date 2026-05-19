@@ -515,3 +515,52 @@ button:disabled {
 .task-card .time {
   margin-top: 18px;
 }
+
+.unscheduled h3 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.unscheduled-subtitle {
+  margin: 0 0 16px;
+  color: #9a3412;
+  font-size: 14px;
+}
+
+.unscheduled-list {
+  display: grid;
+  gap: 10px;
+}
+
+.unscheduled-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #fed7aa;
+  border-radius: 16px;
+  padding: 14px;
+  text-align: left;
+}
+
+.unscheduled-item strong {
+  color: #7c2d12;
+}
+
+.unscheduled-item p {
+  margin: 5px 0 0;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.unscheduled-item span {
+  flex-shrink: 0;
+  background: #ffedd5;
+  color: #9a3412;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: 999px;
+}
