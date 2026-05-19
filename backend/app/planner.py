@@ -2,6 +2,7 @@ import json
 import os
 import re
 from datetime import datetime, timedelta
+from google.genai import errors
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -155,10 +156,21 @@ Return only JSON in this format:
 ]
 """
 
-    response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=prompt,
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt,
+        )
+    except errors.ServerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini is temporarily overloaded. Please try again in a moment.",
+        )
+    except errors.APIError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gemini API error: {str(e)}",
+        )
 
     raw_text = clean_json_response(response.text)
 
