@@ -134,11 +134,10 @@ orbit-ai-workspace-assistant/
 - [x] Connect frontend to FastAPI backend
 - [x] Generate AI-powered daily plans from the UI
 - [x] Commit approved plans into Google Calendar
-- [ ] Allow manual task editing before calendar commit
-- [ ] Support committing individual tasks instead of full schedules
-- [ ] Display Google Calendar timeline
-- [ ] Display Gmail follow-ups requiring responses
-- [ ] Add drag-and-drop scheduling
+- [x] Allow manual task editing before calendar commit
+- [x] Support committing individual tasks instead of full schedules
+- [x] Display Google Calendar timeline
+- [x] Display Gmail follow-ups requiring responses
 
 ### Phase 9 — Product Polish
 - [ ] Add assistant UI

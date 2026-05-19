@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -13,6 +14,12 @@ from app.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_TOKEN_URL,
 router = APIRouter()
 
 TOKEN_FILE = Path("token.json")
+
+
+class DraftInput(BaseModel):
+    to: str
+    subject: str
+    body: str
 
 
 def get_credentials():
@@ -62,7 +69,6 @@ def get_messages(max_results: int = 10):
     )
 
     messages = result.get("messages", [])
-
     output = []
 
     for message in messages:
@@ -134,17 +140,16 @@ def detect_follow_ups(max_results: int = 10):
             )
 
     follow_ups.sort(key=lambda item: item["score"], reverse=True)
-
     return follow_ups
 
 
 @router.post("/draft-follow-up")
-def create_draft_follow_up(to: str, subject: str, body: str):
+def create_draft_follow_up(input_data: DraftInput):
     service = get_gmail_service()
 
-    message = MIMEText(body)
-    message["to"] = to
-    message["subject"] = subject
+    message = MIMEText(input_data.body)
+    message["to"] = input_data.to
+    message["subject"] = input_data.subject
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
