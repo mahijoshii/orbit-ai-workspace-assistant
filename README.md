@@ -140,7 +140,7 @@ orbit-ai-workspace-assistant/
 - [x] Display Gmail follow-ups requiring responses
 
 ### Phase 9 — Product Polish
-- [ ] Add assistant UI
+- [x] Add assistant UI
 - [x] Add animations / UX polish
 - [ ] Add demo data mode
 - [ ] Add screenshots

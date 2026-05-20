@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./styles.css";
+import AssistantPanel from "./components/AssistantPanel";
 
 const API_BASE = "http://localhost:8000";
 const CALENDAR_START_HOUR = 8;
@@ -45,7 +46,7 @@ type CalendarEvent = {
 
 function App() {
   const [taskText, setTaskText] = useState(
-    "study ECE for 3 hours today, reply to emails for 30 minutes, go to the gym for 1 hour tonight"
+    "study ECE for an hour, reply to emails for 30 minutes"
   );
   const [scheduled, setScheduled] = useState<ScheduledTask[]>([]);
   const [unscheduled, setUnscheduled] = useState<any[]>([]);
@@ -373,6 +374,8 @@ function App() {
         </section>
       </main>
 
+    
+
       <section className="dashboard calendar-section">
         <div className="section-header">
           <h2>Today's Calendar</h2>
@@ -612,7 +615,22 @@ function App() {
           </div>
         )}
       </section>
+
+      <AssistantPanel
+        onGeneratePlan={generatePlan}
+        onCheckFollowUps={fetchFollowUps}
+        onRefreshCalendar={async () => {
+          await fetchCalendarEvents();
+          setCommitMessage("Calendar refreshed.");
+        }}
+        loading={loading}
+        followUpsLoading={followUpsLoading}
+        calendarLoading={calendarLoading}
+      />
+      
     </div>
+
+    
   );
 }
 
