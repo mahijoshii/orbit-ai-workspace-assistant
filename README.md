@@ -141,7 +141,7 @@ orbit-ai-workspace-assistant/
 
 ### Phase 9 — Product Polish
 - [ ] Add assistant UI
-- [ ] Add animations / UX polish
+- [x] Add animations / UX polish
 - [ ] Add demo data mode
 - [ ] Add screenshots
 
@@ -254,7 +254,9 @@ Coming soon.
 
 ## Status
 
-🚧 Currently building: **Human-in-the-loop Scheduling + Workspace UX (Phase 8)**
+## Status
+
+🚧 Currently building: **Product Polish + Demo Readiness (Phase 9)**
 
 ---
 
