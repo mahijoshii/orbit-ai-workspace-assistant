@@ -8,6 +8,13 @@ const CALENDAR_START_HOUR = 8;
 const CALENDAR_END_HOUR = 22;
 const HOUR_HEIGHT = 72;
 
+const LOADING_STEPS = [
+  "Analyzing your calendar",
+  "Finding free time",
+  "Prioritizing tasks",
+  "Optimizing your schedule",
+];
+
 type ScheduledTask = {
   title: string;
   priority: string;
@@ -54,9 +61,26 @@ function App() {
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [draftPreviews, setDraftPreviews] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
+
+  useEffect(() => {
+    let interval: number | undefined;
+
+    if (loading) {
+      interval = window.setInterval(() => {
+        setLoadingStep((current) => (current + 1) % LOADING_STEPS.length);
+      }, 1200);
+    } else {
+      setLoadingStep(0);
+    }
+
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
+  }, [loading]);
 
   const loginWithGoogle = () => {
     window.location.href = `${API_BASE}/auth/login`;
@@ -306,12 +330,8 @@ function App() {
     const endMinutes = end.getHours() * 60 + end.getMinutes();
     const calendarStartMinutes = CALENDAR_START_HOUR * 60;
 
-    const top =
-      ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
-
-    const height =
-      Math.max(28, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
-
+    const top = ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
+    const height = Math.max(28, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
     const durationMinutes = Math.max(1, endMinutes - startMinutes);
 
     return {
@@ -359,7 +379,7 @@ function App() {
 
           <div className="actions">
             <button onClick={generatePlan} disabled={loading}>
-              {loading ? "Thinking..." : "Generate Plan"}
+              {loading ? "Orbit is thinking..." : "Generate Plan"}
             </button>
             <button
               className="secondary-btn"
@@ -370,11 +390,24 @@ function App() {
             </button>
           </div>
 
+          {loading && (
+            <div className="thinking-card">
+              <div className="thinking-orb" />
+              <div>
+                <strong>{LOADING_STEPS[loadingStep]}</strong>
+                <span>Orbit is preparing the best plan for your day.</span>
+              </div>
+              <div className="thinking-dots">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          )}
+
           {commitMessage && <div className="success">{commitMessage}</div>}
         </section>
       </main>
-
-    
 
       <section className="dashboard calendar-section">
         <div className="section-header">
@@ -448,15 +481,26 @@ function App() {
       <section className="dashboard">
         <div className="section-header">
           <h2>Generated Plan</h2>
-          <p>Edit tasks first, then commit one task or the full schedule.</p>
+          <p>
+            {scheduled.length === 0
+              ? "Generate a plan to see editable tasks here."
+              : "Edit tasks first, then commit one task or the full schedule."}
+          </p>
         </div>
 
         {scheduled.length === 0 ? (
-          <div className="empty">No plan generated yet.</div>
+          <div className="empty empty-polished">
+            <div className="empty-icon">✦</div>
+            <h3>No plan generated yet.</h3>
+            <p>
+              Add a task dump above and Orbit will turn it into editable
+              calendar-ready blocks.
+            </p>
+          </div>
         ) : (
           <div className="task-grid">
             {scheduled.map((task, index) => (
-              <div className="task-card" key={`${task.title}-${index}`}>
+              <div className="task-card appear-in" key={`${task.title}-${index}`}>
                 <div className="task-top">
                   <span className="pill">{task.priority}</span>
                   {task.task_type && (
@@ -518,7 +562,7 @@ function App() {
         )}
 
         {unscheduled.length > 0 && (
-          <div className="unscheduled">
+          <div className="unscheduled appear-in">
             <h3>Unscheduled Tasks</h3>
             <p className="unscheduled-subtitle">
               Orbit could not fit these into today's free calendar blocks. You
@@ -550,7 +594,11 @@ function App() {
       <section className="dashboard workspace-section">
         <div className="section-header">
           <h2>Workspace Follow-Ups</h2>
-          <p>Review suggested replies before creating Gmail drafts.</p>
+          <p>
+            {followUps.length === 0
+              ? "Check Gmail to surface threads that may need attention."
+              : "Review suggested replies before creating Gmail drafts."}
+          </p>
         </div>
 
         <button
@@ -558,15 +606,39 @@ function App() {
           onClick={fetchFollowUps}
           disabled={followUpsLoading}
         >
-          {followUpsLoading ? "Checking Gmail..." : "Check Gmail Follow-Ups"}
+          {followUpsLoading
+            ? "Orbit is checking Gmail..."
+            : "Check Gmail Follow-Ups"}
         </button>
 
+        {followUpsLoading && (
+          <div className="thinking-card compact-thinking">
+            <div className="thinking-orb" />
+            <div>
+              <strong>Scanning Gmail</strong>
+              <span>Orbit is looking for unanswered threads.</span>
+            </div>
+            <div className="thinking-dots">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        )}
+
         {followUps.length === 0 ? (
-          <div className="empty workspace-empty">No follow-ups loaded yet.</div>
+          <div className="empty workspace-empty empty-polished">
+            <div className="empty-icon">✉</div>
+            <h3>No follow-ups loaded yet.</h3>
+            <p>
+              Click the button above and Orbit will scan recent Gmail messages
+              for possible replies.
+            </p>
+          </div>
         ) : (
           <div className="followup-grid">
             {followUps.map((item) => (
-              <div className="followup-card" key={item.id}>
+              <div className="followup-card appear-in" key={item.id}>
                 <div className="task-top">
                   <span className="pill">score {item.score}</span>
                   <span className="pill muted">gmail</span>
@@ -627,10 +699,7 @@ function App() {
         followUpsLoading={followUpsLoading}
         calendarLoading={calendarLoading}
       />
-      
     </div>
-
-    
   );
 }
 
