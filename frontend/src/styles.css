@@ -564,3 +564,97 @@ button:disabled {
   padding: 5px 9px;
   border-radius: 999px;
 }
+
+.calendar-day-view,
+.calendar-hour-row,
+.calendar-hour-label,
+.calendar-hour-slot,
+.calendar-event-card,
+.calendar-event-title,
+.calendar-event-time {
+  all: unset;
+}
+
+.calendar-gcal-view {
+  position: relative;
+  margin-top: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(229, 231, 235, 0.85);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 18px 45px rgba(31, 41, 55, 0.08);
+}
+
+.calendar-gcal-hour {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+}
+
+.calendar-gcal-label {
+  position: absolute;
+  left: 18px;
+  top: -10px;
+  width: 72px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b7280;
+}
+
+.calendar-gcal-line {
+  position: absolute;
+  left: 96px;
+  right: 0;
+  height: 1px;
+  background: #eef0f4;
+}
+
+.calendar-gcal-events {
+  position: absolute;
+  inset: 0 12px 0 108px;
+}
+
+.calendar-gcal-event {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.12);
+  border-left: 5px solid rgba(255, 255, 255, 0.8);
+}
+
+.calendar-gcal-event.focus {
+  background: rgba(124, 58, 237, 0.85);
+  color: white;
+}
+
+.calendar-gcal-event.admin {
+  background: rgba(37, 99, 235, 0.85);
+  color: white;
+}
+
+.calendar-gcal-event.personal {
+  background: rgba(249, 115, 22, 0.85);
+  color: white;
+}
+
+.calendar-gcal-event.general {
+  background: rgba(31, 41, 55, 0.82);
+  color: white;
+}
+
+.calendar-gcal-event-title {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.calendar-gcal-event-time {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.9;
+}

@@ -3,6 +3,9 @@ import axios from "axios";
 import "./styles.css";
 
 const API_BASE = "http://localhost:8000";
+const CALENDAR_START_HOUR = 8;
+const CALENDAR_END_HOUR = 22;
+const HOUR_HEIGHT = 72;
 
 type ScheduledTask = {
   title: string;
@@ -251,48 +254,71 @@ function App() {
     return new Date(value).toISOString();
   };
 
-const getCalendarEventType = (title: string) => {
-  const text = title.toLowerCase();
+  const getCalendarEventType = (title: string) => {
+    const text = title.toLowerCase();
 
-  if (
-    text.includes("study") ||
-    text.includes("code") ||
-    text.includes("ece") ||
-    text.includes("assignment") ||
-    text.includes("project") ||
-    text.includes("work") ||
-    text.includes("office") ||
-    text.includes("amplify")
-  ) {
-    return "focus";
-  }
+    if (
+      text.includes("study") ||
+      text.includes("code") ||
+      text.includes("ece") ||
+      text.includes("assignment") ||
+      text.includes("project") ||
+      text.includes("work") ||
+      text.includes("office") ||
+      text.includes("amplify")
+    ) {
+      return "focus";
+    }
 
-  if (
-    text.includes("email") ||
-    text.includes("reply") ||
-    text.includes("follow") ||
-    text.includes("meeting") ||
-    text.includes("call")
-  ) {
-    return "admin";
-  }
+    if (
+      text.includes("email") ||
+      text.includes("reply") ||
+      text.includes("follow") ||
+      text.includes("meeting") ||
+      text.includes("call")
+    ) {
+      return "admin";
+    }
 
-  if (
-    text.includes("gym") ||
-    text.includes("run") ||
-    text.includes("workout") ||
-    text.includes("glutes") ||
-    text.includes("legs") ||
-    text.includes("walk") ||
-    text.includes("lunch") ||
-    text.includes("cardio") ||
-    text.includes("core")
-  ) {
-    return "personal";
-  }
+    if (
+      text.includes("gym") ||
+      text.includes("run") ||
+      text.includes("workout") ||
+      text.includes("glutes") ||
+      text.includes("legs") ||
+      text.includes("walk") ||
+      text.includes("lunch") ||
+      text.includes("cardio") ||
+      text.includes("core")
+    ) {
+      return "personal";
+    }
 
-  return "general";
-};
+    return "general";
+  };
+
+  const getCalendarEventStyle = (event: CalendarEvent) => {
+    const start = new Date(getEventStart(event));
+    const end = new Date(getEventEnd(event));
+
+    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    const endMinutes = end.getHours() * 60 + end.getMinutes();
+    const calendarStartMinutes = CALENDAR_START_HOUR * 60;
+
+    const top =
+      ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
+
+    const height =
+      Math.max(28, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
+
+    const durationMinutes = Math.max(1, endMinutes - startMinutes);
+
+    return {
+      top: `${Math.max(0, top)}px`,
+      height: `${height}px`,
+      zIndex: 10000 - durationMinutes,
+    };
+  };
 
   const sortedCalendarEvents = [...calendarEvents].sort(
     (a, b) =>
@@ -350,7 +376,7 @@ const getCalendarEventType = (title: string) => {
       <section className="dashboard calendar-section">
         <div className="section-header">
           <h2>Today's Calendar</h2>
-          <p>Live view of your Google Calendar schedule.</p>
+          <p>Live Google Calendar view. Approved tasks appear here.</p>
         </div>
 
         <button
@@ -364,45 +390,55 @@ const getCalendarEventType = (title: string) => {
           {calendarLoading ? "Refreshing..." : "Refresh Calendar"}
         </button>
 
-        <div className="calendar-day-view">
-          {Array.from({ length: 14 }, (_, i) => {
-            const hour = i + 8;
+        <div
+          className="calendar-gcal-view"
+          style={{
+            height: `${
+              (CALENDAR_END_HOUR - CALENDAR_START_HOUR) * HOUR_HEIGHT
+            }px`,
+          }}
+        >
+          {Array.from(
+            { length: CALENDAR_END_HOUR - CALENDAR_START_HOUR + 1 },
+            (_, i) => {
+              const hour = i + CALENDAR_START_HOUR;
 
-            return (
-              <div className="calendar-hour-row" key={hour}>
-                <div className="calendar-hour-label">
-                  {hour < 12
-                    ? `${hour} AM`
-                    : hour === 12
-                    ? "12 PM"
-                    : `${hour - 12} PM`}
+              return (
+                <div
+                  className="calendar-gcal-hour"
+                  key={hour}
+                  style={{ top: `${i * HOUR_HEIGHT}px` }}
+                >
+                  <div className="calendar-gcal-label">
+                    {hour < 12
+                      ? `${hour} AM`
+                      : hour === 12
+                      ? "12 PM"
+                      : `${hour - 12} PM`}
+                  </div>
+                  <div className="calendar-gcal-line" />
                 </div>
+              );
+            }
+          )}
 
-                <div className="calendar-hour-slot">
-                  {sortedCalendarEvents
-                    .filter((event) => {
-                      const start = new Date(getEventStart(event));
-                      return start.getHours() === hour;
-                    })
-                    .map((event) => (
-                      <div
-                        className={`calendar-event-card ${getCalendarEventType(
-                          event.title
-                        )}`}
-                        key={event.id}
-                      >
-                        <div className="calendar-event-title">{event.title}</div>
-
-                        <div className="calendar-event-time">
-                          {formatTime(getEventStart(event))} —{" "}
-                          {formatTime(getEventEnd(event))}
-                        </div>
-                      </div>
-                    ))}
+          <div className="calendar-gcal-events">
+            {sortedCalendarEvents.map((event) => (
+              <div
+                className={`calendar-gcal-event ${getCalendarEventType(
+                  event.title
+                )}`}
+                style={getCalendarEventStyle(event)}
+                key={event.id}
+              >
+                <div className="calendar-gcal-event-title">{event.title}</div>
+                <div className="calendar-gcal-event-time">
+                  {formatTime(getEventStart(event))} —{" "}
+                  {formatTime(getEventEnd(event))}
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -479,28 +515,33 @@ const getCalendarEventType = (title: string) => {
         )}
 
         {unscheduled.length > 0 && (
-        <div className="unscheduled">
-          <h3>Unscheduled Tasks</h3>
-          <p className="unscheduled-subtitle">
-            Orbit could not fit these into today's free calendar blocks.
-          </p>
+          <div className="unscheduled">
+            <h3>Unscheduled Tasks</h3>
+            <p className="unscheduled-subtitle">
+              Orbit could not fit these into today's free calendar blocks. You
+              can manually adjust the time, shorten the task, or free up space
+              in Google Calendar.
+            </p>
 
-          <div className="unscheduled-list">
-            {unscheduled.map((task, index) => (
-              <div className="unscheduled-item" key={`${task.title}-${index}`}>
-                <div>
-                  <strong>{task.title}</strong>
-                  <p>{task.reason || "No available time block was large enough."}</p>
+            <div className="unscheduled-list">
+              {unscheduled.map((task, index) => (
+                <div className="unscheduled-item" key={`${task.title}-${index}`}>
+                  <div>
+                    <strong>{task.title}</strong>
+                    <p>
+                      {task.reason ||
+                        "No available time block was large enough."}
+                    </p>
+                  </div>
+
+                  {task.duration_minutes && (
+                    <span>{task.duration_minutes} min</span>
+                  )}
                 </div>
-
-                {task.duration_minutes && (
-                  <span>{task.duration_minutes} min</span>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </section>
 
       <section className="dashboard workspace-section">
