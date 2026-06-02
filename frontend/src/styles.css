@@ -119,6 +119,7 @@ textarea:focus,
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 18px;
+  align-items: center;
 }
 
 button {
@@ -149,6 +150,22 @@ button:disabled {
 
 .secondary-btn:hover:not(:disabled) {
   box-shadow: 0 10px 22px rgba(91, 33, 182, 0.12);
+}
+
+.settings-btn {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 20px;
+}
+
+.settings-btn:hover:not(:disabled) {
+  box-shadow: 0 10px 22px rgba(31, 41, 55, 0.12);
 }
 
 .success {
@@ -424,7 +441,8 @@ button:disabled {
 
   .task-grid,
   .followup-grid,
-  .intelligence-grid {
+  .intelligence-grid,
+  .preferences-grid {
     grid-template-columns: 1fr;
   }
 
@@ -442,6 +460,16 @@ button:disabled {
   .dashboard {
     padding-left: 24px;
     padding-right: 24px;
+  }
+
+  .calendar-move-hint,
+  .calendar-manual-edit {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .calendar-move-hint {
+    display: grid;
   }
 }
 
@@ -586,6 +614,11 @@ button:disabled {
   box-shadow: 0 18px 45px rgba(31, 41, 55, 0.08);
 }
 
+.calendar-gcal-view.move-target-active {
+  cursor: crosshair;
+  outline: 3px solid rgba(124, 58, 237, 0.22);
+}
+
 .calendar-gcal-hour {
   position: absolute;
   left: 0;
@@ -621,10 +654,21 @@ button:disabled {
   left: 0;
   right: 0;
   border-radius: 12px;
-  padding: 8px 10px;
+  padding: 8px 38px 8px 10px;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(31, 41, 55, 0.12);
   border-left: 5px solid rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+.calendar-gcal-event:hover {
+  filter: brightness(1.04);
+}
+
+.selected-calendar-item {
+  outline: 3px solid rgba(17, 24, 39, 0.36);
+  outline-offset: 2px;
+  filter: brightness(1.08);
 }
 
 .calendar-gcal-event.focus {
@@ -663,12 +707,7 @@ button:disabled {
 .generated-preview {
   right: 12px;
   border: 1px dashed rgba(17, 24, 39, 0.45);
-  cursor: grab;
   opacity: 0.86;
-}
-
-.generated-preview:active {
-  cursor: grabbing;
 }
 
 .preview-badge {
@@ -684,19 +723,73 @@ button:disabled {
   padding: 3px 6px;
 }
 
-.calendar-delete-btn {
+.calendar-event-actions {
   position: absolute;
   right: 8px;
   top: 7px;
-  padding: 5px 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+.calendar-icon-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
   color: white;
-  font-size: 10px;
+  font-size: 14px;
+  line-height: 1;
 }
 
-.calendar-delete-btn:hover:not(:disabled) {
+.calendar-icon-btn:hover:not(:disabled) {
   box-shadow: none;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.calendar-move-hint {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: #4c1d95;
+  font-weight: 700;
+}
+
+.calendar-move-hint span {
+  display: block;
+  line-height: 1.4;
+}
+
+.calendar-instructions {
+  margin: 10px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.calendar-manual-edit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.calendar-manual-edit label {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.calendar-manual-edit .task-input {
+  margin-top: 5px;
+  background: white;
 }
 
 .intelligence-grid {
@@ -742,6 +835,19 @@ button:disabled {
   display: block;
   color: #111827;
   font-size: 24px;
+}
+
+.weather-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  background: #ecfeff;
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  padding: 11px 12px;
+  color: #155e75;
+  font-size: 13px;
 }
 
 .briefing-stats span,
@@ -809,6 +915,86 @@ button:disabled {
   display: block;
   margin-top: 6px;
   color: #9a3412;
+}
+
+.prep-search-btn {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+}
+
+.context-search {
+  margin-top: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.context-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.context-result {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.context-result p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.context-result small {
+  color: #6b7280;
+}
+
+.preferences-panel {
+  margin-top: 18px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.preferences-panel strong,
+.preferences-panel span {
+  display: block;
+}
+
+.preferences-panel span {
+  color: #6b7280;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.preferences-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.compact-preferences-grid {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 360px;
+}
+
+.preferences-grid label {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.preferences-save {
+  margin-top: 12px;
 }
 
 .mini-empty {

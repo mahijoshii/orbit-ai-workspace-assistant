@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from google import genai
 
 from app.calendar import get_free_time, get_calendar_service
+from app.preferences import get_preferences
 
 router = APIRouter()
 
@@ -149,12 +150,16 @@ def parse_time_phrase(
 
 def extract_scheduling_constraints(text: str):
     normalized = text.lower()
+    preferences = get_preferences()
     constraints = {
-        "earliest_hour": None,
-        "latest_hour": None,
-        "buffer_minutes": TASK_BUFFER_MINUTES,
+        "earliest_hour": preferences["preferred_start_hour"],
+        "latest_hour": preferences["preferred_end_hour"],
+        "buffer_minutes": preferences["default_buffer_minutes"],
         "preferred_window": None,
-        "notes": [],
+        "notes": [
+            f"Use preferred schedule window {preferences['preferred_start_hour']}:00-{preferences['preferred_end_hour']}:00",
+            f"Use default {preferences['default_buffer_minutes']} minute buffer",
+        ],
     }
 
     buffer_match = re.search(r"leave\s+(\d+)\s+minutes?\s+between", normalized)

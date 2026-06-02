@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -12,6 +13,11 @@ from app.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_TOKEN_URL,
 router = APIRouter()
 
 TOKEN_FILE = Path("token.json")
+
+
+class MoveEventInput(BaseModel):
+    start: str
+    end: str
 
 
 def get_credentials():
@@ -254,4 +260,52 @@ def delete_event(event_id: str):
     return {
         "message": "Event deleted successfully",
         "event_id": event_id,
+    }
+
+
+@router.patch("/events/{event_id}")
+def move_event(event_id: str, input_data: MoveEventInput):
+    service = get_calendar_service()
+
+    try:
+        existing_event = (
+            service.events()
+            .get(calendarId="primary", eventId=event_id)
+            .execute()
+        )
+
+        if "date" in existing_event.get("start", {}):
+            raise HTTPException(
+                status_code=400,
+                detail="All-day events cannot be repositioned in the day timeline.",
+            )
+
+        existing_event["start"] = {
+            "dateTime": input_data.start,
+            "timeZone": "America/Toronto",
+        }
+        existing_event["end"] = {
+            "dateTime": input_data.end,
+            "timeZone": "America/Toronto",
+        }
+
+        updated_event = (
+            service.events()
+            .update(calendarId="primary", eventId=event_id, body=existing_event)
+            .execute()
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not update calendar event: {str(exc)}",
+        )
+
+    return {
+        "message": "Event updated successfully",
+        "event_id": updated_event.get("id"),
+        "title": updated_event.get("summary", "Untitled Event"),
+        "start": updated_event.get("start", {}),
+        "end": updated_event.get("end", {}),
     }

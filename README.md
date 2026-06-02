@@ -34,7 +34,7 @@ to
 - AI-powered daily planning with priority, deadline, task type, and user constraints
 - Constraint-based scheduling with buffers, chunking, and time-of-day optimization
 - Approval-first workflow with editable schedules before committing actions
-- Manual task adjustment, drag-and-drop repositioning, and per-task calendar commit support
+- Manual task adjustment, click-to-move repositioning, manual time editing, and per-task calendar commit support
 - Conflict detection before committing generated tasks
 - Calendar event deletion through the dashboard
 - Daily briefing with calendar, task, and Gmail follow-up context
@@ -131,7 +131,7 @@ orbit-ai-workspace-assistant/
 - [x] Improve priority and deadline handling
 - [x] Add smarter task-type scheduling
 - [x] Respect explicit user-provided scheduling constraints
-- [ ] Add personalized scheduling preferences
+- [x] Add personalized scheduling preferences
 
 ### Phase 8 - Frontend Dashboard
 - [x] Build React + TypeScript dashboard
@@ -149,8 +149,9 @@ orbit-ai-workspace-assistant/
 
 ### Phase 10 - Interactive Scheduling
 - [x] Allow deleting scheduled tasks and calendar events
-- [x] Add drag-and-drop task scheduling
+- [x] Add click-to-move task scheduling
 - [x] Support visual task repositioning directly in calendar view
+- [x] Support manual start/end time editing for selected calendar items
 - [x] Add conflict detection and overlap warnings
 - [x] Add smart schedule adjustment suggestions
 
@@ -158,17 +159,17 @@ orbit-ai-workspace-assistant/
 - [x] Add AI daily briefing at the top of the dashboard
 - [x] Summarize calendar events, tasks, and follow-ups
 - [x] Surface contextual prep suggestions for upcoming events
-- [ ] Add weather-aware preparation recommendations
+- [x] Add weather-aware preparation recommendations
 - [x] Add cooking and grocery preparation reminders
 - [x] Suggest schedule adjustments based on upcoming workload
 
 ### Phase 12 - Meeting Prep Assistant
 - [x] Detect upcoming meetings and presentations
-- [ ] Search Gmail threads related to meetings
-- [ ] Search notes and documents for meeting context
-- [ ] Generate AI summaries for meeting preparation
+- [x] Search Gmail threads related to meetings
+- [x] Search notes and documents for meeting context
+- [x] Generate AI summaries for meeting preparation
 - [x] Surface relevant action items and follow-ups
-- [ ] Add searchable workspace context assistant
+- [x] Add searchable workspace context assistant
 
 ### Phase 13 - Engineering Polish
 - [ ] Add Docker
@@ -195,7 +196,7 @@ The MVP allows a user to:
 4. Fetch Gmail messages and detect follow-ups
 5. Enter tasks in natural language
 6. Generate a structured daily plan
-7. Review, edit, remove, or reposition generated tasks
+7. Review, edit, remove, or reposition generated tasks and calendar events
 8. Detect conflicts before committing
 9. Approve the plan
 10. Commit approved tasks to Google Calendar
@@ -214,11 +215,17 @@ Orbit is a functional AI scheduling system that:
 - Generates optimized daily plans based on free time, priority, deadlines, task type, and constraints
 - Applies scheduling rules including buffers, chunking, time-of-day fit, and explicit user constraints
 - Supports constraints like "after 3pm", "before lunch", "morning", "no meetings after 5", and "leave 30 minutes between tasks"
-- Lets users edit, remove, nudge, drag, and visually reposition generated tasks before commit
+- Lets users edit, remove, nudge, click-to-move, and visually reposition generated tasks before commit
+- Lets users click-to-move existing Google Calendar events and manually edit selected start/end times
 - Detects overlaps between generated tasks and existing calendar events before committing
 - Commits approved plans or individual tasks directly into Google Calendar
 - Shows a Daily Briefing with current/next calendar context, generated tasks, Gmail follow-ups, and prep reminders
 - Shows a Meeting Prep panel with practical suggestions based on upcoming event titles and Gmail follow-up context
+- Searches Gmail and local docs for meeting prep context
+- Generates short meeting prep summaries from matched workspace context
+- Uses saved scheduling preferences for default planning hours, buffer time, and weather location
+- Uses free weather data for outdoor preparation suggestions
+- Supports repositioning existing Google Calendar events through the dashboard
 - Provides a live frontend dashboard for generating and approving AI schedules
 - Supports approval-first scheduling before modifying Google Calendar
 
@@ -226,10 +233,10 @@ Orbit is a functional AI scheduling system that:
 
 ## Current Limitations
 
-- Weather-aware suggestions are currently heuristic reminders, not live weather API results.
-- Meeting Prep uses upcoming event titles and loaded Gmail follow-ups, but does not yet deeply search full Gmail threads, Google Docs, or notes.
-- Personalized scheduling preferences are prompt-based only; Orbit does not yet learn and store long-term user preferences.
-- Drag-and-drop supports simple task repositioning, not full calendar resizing or advanced calendar editing.
+- Weather-aware suggestions use free Open-Meteo data and the saved user location, not a paid weather API.
+- Meeting Prep searches Gmail snippets and local files under `docs/`, but does not yet search Google Docs through the Google Drive/Docs APIs.
+- Personalized scheduling preferences are saved locally, but Orbit does not yet learn them automatically from behavior.
+- Calendar repositioning supports click-to-move and manual start/end editing, not full event resizing.
 - The project is still local-first and not production deployed.
 
 ---
@@ -250,13 +257,12 @@ This mirrors the architecture of modern AI agents and productivity tools.
 
 ## Planned Intelligence Improvements
 
-- Learn personalized scheduling preferences over time
-- Add live weather-aware preparation recommendations
+- Learn personalized scheduling preferences automatically from user behavior
 - Search full Gmail threads for richer meeting context
-- Search Google Docs and notes for meeting preparation
-- Add searchable workspace context assistant
-- Add deeper AI summaries for meeting preparation
+- Search Google Docs through Google Drive/Docs APIs
+- Add deeper multi-source AI summaries for meeting preparation
 - Improve conflict resolution with one-click rescheduling
+- Add full calendar event resizing
 - Add contextual task placement based on workload and calendar density
 
 ---
@@ -288,7 +294,7 @@ This mirrors the architecture of modern AI agents and productivity tools.
 4. Gemini converts tasks into structured planning objects
 5. Orbit detects free time and optimizes scheduling
 6. User reviews the generated plan
-7. User edits, removes, or repositions generated tasks
+7. User edits, removes, or repositions generated tasks and calendar events
 8. Orbit warns about conflicts before commit
 9. User commits approved tasks directly into Google Calendar
 10. Orbit shows a briefing and prep suggestions for the day

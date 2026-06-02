@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import axios from "axios";
 import "./styles.css";
 import AssistantPanel from "./components/AssistantPanel";
@@ -7,6 +7,7 @@ const API_BASE = "http://localhost:8000";
 const CALENDAR_START_HOUR = 8;
 const CALENDAR_END_HOUR = 22;
 const HOUR_HEIGHT = 72;
+const CALENDAR_TOP_PADDING = 28;
 
 const LOADING_STEPS = [
   "Analyzing your calendar",
@@ -38,6 +39,24 @@ type PlanRules = {
   scheduling_constraints?: SchedulingConstraints;
 };
 
+type Preferences = {
+  preferred_start_hour: number;
+  preferred_end_hour: number;
+  default_buffer_minutes: number;
+  location_name: string;
+  latitude: number;
+  longitude: number;
+};
+
+type WeatherReport = {
+  location_name: string;
+  temperature: number;
+  precipitation: number;
+  wind_speed: number;
+  description: string;
+  advice: string[];
+};
+
 type FollowUp = {
   id: string;
   thread_id: string;
@@ -63,6 +82,24 @@ type CalendarEvent = {
   location?: string | null;
 };
 
+type ContextSearchResult = {
+  query: string;
+  summary: string;
+  gmail_results: FollowUp[];
+  note_results: {
+    source: string;
+    title: string;
+    path: string;
+    snippet: string;
+    score: number;
+  }[];
+};
+
+type SelectedCalendarItem =
+  | { type: "generated"; index: number }
+  | { type: "calendar"; event: CalendarEvent }
+  | null;
+
 type ScheduleConflict = {
   taskIndex: number;
   taskTitle: string;
@@ -77,15 +114,32 @@ function App() {
   const [scheduled, setScheduled] = useState<ScheduledTask[]>([]);
   const [unscheduled, setUnscheduled] = useState<any[]>([]);
   const [planRules, setPlanRules] = useState<PlanRules | null>(null);
+  const [preferences, setPreferences] = useState<Preferences>({
+    preferred_start_hour: 9,
+    preferred_end_hour: 22,
+    default_buffer_minutes: 10,
+    location_name: "Toronto",
+    latitude: 43.6532,
+    longitude: -79.3832,
+  });
+  const [weather, setWeather] = useState<WeatherReport | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [contextQuery, setContextQuery] = useState("");
+  const [contextResult, setContextResult] = useState<ContextSearchResult | null>(null);
   const [draftPreviews, setDraftPreviews] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
-  const [draggedTaskIndex, setDraggedTaskIndex] = useState<number | null>(null);
+  const [selectedCalendarItem, setSelectedCalendarItem] =
+    useState<SelectedCalendarItem>(null);
+  const [selectedStartValue, setSelectedStartValue] = useState("");
+  const [selectedEndValue, setSelectedEndValue] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -123,6 +177,80 @@ function App() {
   useEffect(() => {
     fetchCalendarEvents();
   }, []);
+
+  const fetchPreferences = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/preferences`);
+      setPreferences(res.data);
+      return res.data as Preferences;
+    } catch (error) {
+      console.error(error);
+      return preferences;
+    }
+  };
+
+  const fetchWeather = async (savedPreferences = preferences) => {
+    try {
+      const res = await axios.get(`${API_BASE}/weather/current`, {
+        params: {
+          latitude: savedPreferences.latitude,
+          longitude: savedPreferences.longitude,
+        },
+      });
+      setWeather(res.data);
+    } catch (error) {
+      console.error(error);
+      setWeather(null);
+    }
+  };
+
+  useEffect(() => {
+    const loadContext = async () => {
+      const savedPreferences = await fetchPreferences();
+      await fetchWeather(savedPreferences);
+    };
+
+    loadContext();
+  }, []);
+
+  const savePreferences = async () => {
+    setPreferencesSaving(true);
+
+    try {
+      const res = await axios.put(`${API_BASE}/preferences`, preferences);
+      setPreferences(res.data);
+      await fetchWeather(res.data);
+      setCommitMessage("Scheduling preferences saved.");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save preferences. Check your backend terminal.");
+    } finally {
+      setPreferencesSaving(false);
+    }
+  };
+
+  const searchWorkspaceContext = async (query = contextQuery) => {
+    if (!query.trim()) {
+      alert("Enter a meeting, topic, person, or project to search.");
+      return;
+    }
+
+    setContextLoading(true);
+
+    try {
+      const res = await axios.post(`${API_BASE}/gmail/context-search`, {
+        query,
+        max_results: 8,
+      });
+      setContextQuery(query);
+      setContextResult(res.data);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to search workspace context. Check your backend terminal.");
+    } finally {
+      setContextLoading(false);
+    }
+  };
 
   const generatePlan = async () => {
     setLoading(true);
@@ -269,6 +397,44 @@ function App() {
     );
   };
 
+  const updateCalendarEventTimes = async (
+    event: CalendarEvent,
+    start: string,
+    end: string
+  ) => {
+    setCalendarLoading(true);
+
+    try {
+      await axios.patch(`${API_BASE}/calendar/events/${event.id}`, {
+        start,
+        end,
+      });
+      setCommitMessage(`Moved "${event.title}" in Google Calendar.`);
+      await fetchCalendarEvents();
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.response?.data?.detail || "Failed to move calendar event.");
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const moveCalendarEvent = async (event: CalendarEvent, start: Date) => {
+    const durationMs =
+      new Date(getEventEnd(event)).getTime() - new Date(getEventStart(event)).getTime();
+
+    if (durationMs <= 0) {
+      alert("This event cannot be moved because its time range is invalid.");
+      return;
+    }
+
+    await updateCalendarEventTimes(
+      event,
+      start.toISOString(),
+      new Date(start.getTime() + durationMs).toISOString()
+    );
+  };
+
   const deleteCalendarEvent = async (event: CalendarEvent) => {
     if (!window.confirm(`Delete "${event.title}" from Google Calendar?`)) return;
 
@@ -379,6 +545,52 @@ function App() {
     return new Date(value).toISOString();
   };
 
+  const selectCalendarItem = (item: Exclude<SelectedCalendarItem, null>) => {
+    setSelectedCalendarItem(item);
+
+    if (item.type === "calendar") {
+      setSelectedStartValue(formatDateTimeLocal(getEventStart(item.event)));
+      setSelectedEndValue(formatDateTimeLocal(getEventEnd(item.event)));
+      return;
+    }
+
+    const task = scheduled[item.index];
+    setSelectedStartValue(formatDateTimeLocal(task.start));
+    setSelectedEndValue(formatDateTimeLocal(task.end));
+  };
+
+  const clearSelectedCalendarItem = () => {
+    setSelectedCalendarItem(null);
+    setSelectedStartValue("");
+    setSelectedEndValue("");
+  };
+
+  const applySelectedManualTimes = async () => {
+    if (!selectedCalendarItem || !selectedStartValue || !selectedEndValue) return;
+
+    const start = convertLocalToISO(selectedStartValue);
+    const end = convertLocalToISO(selectedEndValue);
+
+    if (new Date(end) <= new Date(start)) {
+      alert("End time must be after start time.");
+      return;
+    }
+
+    if (selectedCalendarItem.type === "generated") {
+      setScheduled((current) =>
+        current.map((task, index) =>
+          index === selectedCalendarItem.index ? { ...task, start, end } : task
+        )
+      );
+    }
+
+    if (selectedCalendarItem.type === "calendar") {
+      await updateCalendarEventTimes(selectedCalendarItem.event, start, end);
+    }
+
+    clearSelectedCalendarItem();
+  };
+
   const getEventTitleText = (event: CalendarEvent | ScheduledTask) => {
     return "title" in event ? event.title : "";
   };
@@ -434,7 +646,9 @@ function App() {
     const endMinutes = end.getHours() * 60 + end.getMinutes();
     const calendarStartMinutes = CALENDAR_START_HOUR * 60;
 
-    const top = ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
+    const top =
+      CALENDAR_TOP_PADDING +
+      ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
     const height = Math.max(28, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
     const durationMinutes = Math.max(1, endMinutes - startMinutes);
 
@@ -453,7 +667,9 @@ function App() {
     const endMinutes = end.getHours() * 60 + end.getMinutes();
     const calendarStartMinutes = CALENDAR_START_HOUR * 60;
 
-    const top = ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
+    const top =
+      CALENDAR_TOP_PADDING +
+      ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
     const height = Math.max(28, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
     const durationMinutes = Math.max(1, endMinutes - startMinutes);
 
@@ -551,7 +767,15 @@ function App() {
     const suggestions = [];
 
     if (titles.includes("walk") || titles.includes("run")) {
-      suggestions.push("For outdoor time, check the weather and grab comfortable layers.");
+      if (weather) {
+        suggestions.push(
+          `For outdoor time in ${weather.location_name}, it is ${Math.round(
+            weather.temperature
+          )}C and ${weather.description}. ${weather.advice[0]}`
+        );
+      } else {
+        suggestions.push("For outdoor time, check the weather and grab comfortable layers.");
+      }
     }
 
     if (titles.includes("cook") || titles.includes("meal") || titles.includes("dinner")) {
@@ -568,6 +792,10 @@ function App() {
 
     if (followUps.length > 0) {
       suggestions.push(`You have ${followUps.length} Gmail follow-up${followUps.length === 1 ? "" : "s"} to review.`);
+    }
+
+    if (weather && (titles.includes("walk") || titles.includes("run") || titles.includes("outdoor"))) {
+      weather.advice.slice(1, 3).forEach((tip) => suggestions.push(tip));
     }
 
     return suggestions.slice(0, 4);
@@ -605,7 +833,14 @@ function App() {
     }
 
     if (title.includes("walk") || title.includes("run")) {
-      suggestions.push("Check the weather before heading out, pick comfortable shoes, and bring water if it is warm.");
+      if (weather) {
+        suggestions.push(
+          `Weather in ${weather.location_name}: ${Math.round(weather.temperature)}C, ${weather.description}, wind ${Math.round(weather.wind_speed)} km/h.`
+        );
+        weather.advice.slice(0, 2).forEach((tip) => suggestions.push(tip));
+      } else {
+        suggestions.push("Check the weather before heading out, pick comfortable shoes, and bring water if it is warm.");
+      }
       suggestions.push("If it is cold or rainy, choose layers and a route that is easy to shorten.");
     }
 
@@ -632,21 +867,46 @@ function App() {
     return suggestions.slice(0, 3);
   };
 
-  const handleCalendarDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (draggedTaskIndex === null) return;
-
+  const getCalendarClickStartTime = (event: MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    const y = Math.max(0, event.clientY - rect.top);
+    const y = Math.max(0, event.clientY - rect.top - CALENDAR_TOP_PADDING);
     const rawMinutes = CALENDAR_START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
     const roundedMinutes = Math.round(rawMinutes / 15) * 15;
 
-    const existingStart = new Date(scheduled[draggedTaskIndex].start);
-    existingStart.setHours(Math.floor(roundedMinutes / 60));
-    existingStart.setMinutes(roundedMinutes % 60, 0, 0);
+    const baseDate =
+      selectedCalendarItem?.type === "calendar"
+        ? new Date(getEventStart(selectedCalendarItem.event))
+        : selectedCalendarItem?.type === "generated"
+        ? new Date(scheduled[selectedCalendarItem.index].start)
+        : new Date();
 
-    placeScheduledTask(draggedTaskIndex, existingStart);
-    setDraggedTaskIndex(null);
+    baseDate.setHours(Math.floor(roundedMinutes / 60));
+    baseDate.setMinutes(roundedMinutes % 60, 0, 0);
+    return baseDate;
+  };
+
+  const handleCalendarClick = async (event: MouseEvent<HTMLDivElement>) => {
+    if (!selectedCalendarItem) return;
+
+    const start = getCalendarClickStartTime(event);
+
+    if (selectedCalendarItem.type === "generated") {
+      placeScheduledTask(selectedCalendarItem.index, start);
+    }
+
+    if (selectedCalendarItem.type === "calendar") {
+      await moveCalendarEvent(selectedCalendarItem.event, start);
+    }
+
+    setSelectedCalendarItem(null);
+  };
+
+  const getSelectedItemTitle = () => {
+    if (!selectedCalendarItem) return "";
+    if (selectedCalendarItem.type === "calendar") {
+      return selectedCalendarItem.event.title;
+    }
+    return scheduled[selectedCalendarItem.index]?.title || "Generated task";
   };
 
   const sortedCalendarEvents = [...calendarEvents].sort(
@@ -723,6 +983,13 @@ function App() {
             >
               Commit Full Plan
             </button>
+            <button
+              className="settings-btn"
+              onClick={() => setSettingsOpen((current) => !current)}
+              title="Scheduling settings"
+            >
+              ⚙
+            </button>
           </div>
 
           {loading && (
@@ -741,6 +1008,59 @@ function App() {
           )}
 
           {commitMessage && <div className="success">{commitMessage}</div>}
+
+          {settingsOpen && (
+          <div className="preferences-panel appear-in">
+            <div>
+              <strong>Scheduling Preferences</strong>
+              <span>Used as defaults when generating plans.</span>
+            </div>
+
+            <div className="preferences-grid compact-preferences-grid">
+              <label>
+                Start hour
+                <input
+                  className="task-input"
+                  type="number"
+                  min="0"
+                  max="23"
+                  value={preferences.preferred_start_hour}
+                  onChange={(event) =>
+                    setPreferences((current) => ({
+                      ...current,
+                      preferred_start_hour: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+
+              <label>
+                End hour
+                <input
+                  className="task-input"
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={preferences.preferred_end_hour}
+                  onChange={(event) =>
+                    setPreferences((current) => ({
+                      ...current,
+                      preferred_end_hour: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+            </div>
+
+            <button
+              className="secondary-btn preferences-save"
+              onClick={savePreferences}
+              disabled={preferencesSaving}
+            >
+              {preferencesSaving ? "Saving..." : "Save Preferences"}
+            </button>
+          </div>
+          )}
         </section>
       </main>
 
@@ -767,6 +1087,16 @@ function App() {
               <span>Gmail follow-ups</span>
             </div>
           </div>
+
+          {weather && (
+            <div className="weather-strip">
+              <strong>{weather.location_name}</strong>
+              <span>
+                {Math.round(weather.temperature)}C, {weather.description}, wind{" "}
+                {Math.round(weather.wind_speed)} km/h
+              </span>
+            </div>
+          )}
 
           {happeningNowEvent && (
             <div className="briefing-next">
@@ -839,11 +1169,66 @@ function App() {
                     {relatedFollowUps.slice(0, 2).map((item) => (
                       <small key={item.id}>{item.subject || item.snippet}</small>
                     ))}
+                    <button
+                      className="secondary-btn prep-search-btn"
+                      onClick={() => searchWorkspaceContext(event.title)}
+                      disabled={contextLoading}
+                    >
+                      {contextLoading ? "Searching..." : "Search Gmail context"}
+                    </button>
                   </div>
                 );
               })}
             </div>
           )}
+
+          <div className="context-search">
+            <label className="mini-label">Search workspace context</label>
+            <div className="context-search-row">
+              <input
+                className="task-input"
+                placeholder="Meeting, person, class, project..."
+                value={contextQuery}
+                onChange={(event) => setContextQuery(event.target.value)}
+              />
+              <button
+                className="secondary-btn"
+                onClick={() => searchWorkspaceContext()}
+                disabled={contextLoading}
+              >
+                {contextLoading ? "Searching..." : "Search"}
+              </button>
+            </div>
+
+            {contextResult && (
+              <div className="context-result">
+                <strong>Prep summary</strong>
+                <p>{contextResult.summary}</p>
+
+                {contextResult.gmail_results.length > 0 && (
+                  <>
+                    <span className="mini-label">Gmail matches</span>
+                    {contextResult.gmail_results.slice(0, 3).map((item) => (
+                      <small key={item.id}>
+                        {item.subject || "No subject"} - {item.snippet}
+                      </small>
+                    ))}
+                  </>
+                )}
+
+                {contextResult.note_results.length > 0 && (
+                  <>
+                    <span className="mini-label">Local note matches</span>
+                    {contextResult.note_results.slice(0, 3).map((item) => (
+                      <small key={item.path}>
+                        {item.title} - {item.snippet}
+                      </small>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -864,13 +1249,62 @@ function App() {
           {calendarLoading ? "Refreshing..." : "Refresh Calendar"}
         </button>
 
+        <p className="calendar-instructions">
+          Click an event or generated task, then click a time to move it. You
+          can also edit the selected start and end time manually.
+        </p>
+
+        {selectedCalendarItem && (
+          <div className="calendar-move-hint">
+            <div>
+              <span>
+                Moving <strong>{getSelectedItemTitle()}</strong>
+              </span>
+              <div className="calendar-manual-edit">
+                <label>
+                  Start
+                  <input
+                    className="task-input"
+                    type="datetime-local"
+                    value={selectedStartValue}
+                    onChange={(event) => setSelectedStartValue(event.target.value)}
+                  />
+                </label>
+                <label>
+                  End
+                  <input
+                    className="task-input"
+                    type="datetime-local"
+                    value={selectedEndValue}
+                    onChange={(event) => setSelectedEndValue(event.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+            <button
+              className="secondary-btn mini-action-btn"
+              onClick={applySelectedManualTimes}
+            >
+              Apply
+            </button>
+            <button
+              className="secondary-btn mini-action-btn"
+              onClick={clearSelectedCalendarItem}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <div
-          className="calendar-gcal-view"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={handleCalendarDrop}
+          className={`calendar-gcal-view ${
+            selectedCalendarItem ? "move-target-active" : ""
+          }`}
+          onClick={handleCalendarClick}
           style={{
             height: `${
-              (CALENDAR_END_HOUR - CALENDAR_START_HOUR) * HOUR_HEIGHT
+              (CALENDAR_END_HOUR - CALENDAR_START_HOUR) * HOUR_HEIGHT +
+              CALENDAR_TOP_PADDING
             }px`,
           }}
         >
@@ -883,7 +1317,7 @@ function App() {
                 <div
                   className="calendar-gcal-hour"
                   key={hour}
-                  style={{ top: `${i * HOUR_HEIGHT}px` }}
+                  style={{ top: `${CALENDAR_TOP_PADDING + i * HOUR_HEIGHT}px` }}
                 >
                   <div className="calendar-gcal-label">
                     {hour < 12
@@ -903,23 +1337,38 @@ function App() {
               <div
                 className={`calendar-gcal-event ${getCalendarEventType(
                   event.title
-                )}`}
+                )} ${
+                  selectedCalendarItem?.type === "calendar" &&
+                  selectedCalendarItem.event.id === event.id
+                    ? "selected-calendar-item"
+                    : ""
+                }`}
+                onClick={(clickEvent) => {
+                  clickEvent.stopPropagation();
+                  selectCalendarItem({ type: "calendar", event });
+                }}
                 style={getCalendarEventStyle(event)}
                 key={event.id}
+                title="Click to select, then click a time to move"
               >
+                <div className="calendar-event-actions">
+                  <button
+                    className="calendar-icon-btn"
+                    onClick={(clickEvent) => {
+                      clickEvent.stopPropagation();
+                      deleteCalendarEvent(event);
+                    }}
+                    disabled={calendarLoading}
+                    title="Delete calendar event"
+                  >
+                    x
+                  </button>
+                </div>
                 <div className="calendar-gcal-event-title">{event.title}</div>
                 <div className="calendar-gcal-event-time">
                   {formatTime(getEventStart(event))} -{" "}
                   {formatTime(getEventEnd(event))}
                 </div>
-                <button
-                  className="calendar-delete-btn"
-                  onClick={() => deleteCalendarEvent(event)}
-                  disabled={calendarLoading}
-                  title="Delete calendar event"
-                >
-                  Delete
-                </button>
               </div>
             ))}
 
@@ -927,13 +1376,19 @@ function App() {
               <div
                 className={`calendar-gcal-event generated-preview ${getCalendarEventType(
                   task.title
-                )}`}
-                draggable
-                onDragStart={() => setDraggedTaskIndex(index)}
-                onDragEnd={() => setDraggedTaskIndex(null)}
+                )} ${
+                  selectedCalendarItem?.type === "generated" &&
+                  selectedCalendarItem.index === index
+                    ? "selected-calendar-item"
+                    : ""
+                }`}
+                onClick={(clickEvent) => {
+                  clickEvent.stopPropagation();
+                  selectCalendarItem({ type: "generated", index });
+                }}
                 style={getScheduledTaskStyle(task)}
                 key={`${task.title}-${task.start}-${index}`}
-                title="Drag to reposition before committing"
+                title="Click to select, then click a time to move"
               >
                 <div className="calendar-gcal-event-title">{task.title}</div>
                 <div className="calendar-gcal-event-time">
