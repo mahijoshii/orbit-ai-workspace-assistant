@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import axios from "axios";
 import "./styles.css";
 import AssistantPanel from "./components/AssistantPanel";
@@ -26,6 +26,18 @@ type ScheduledTask = {
   reason?: string;
 };
 
+type SchedulingConstraints = {
+  earliest_hour?: number | null;
+  latest_hour?: number | null;
+  buffer_minutes?: number;
+  preferred_window?: string | null;
+  notes?: string[];
+};
+
+type PlanRules = {
+  scheduling_constraints?: SchedulingConstraints;
+};
+
 type FollowUp = {
   id: string;
   thread_id: string;
@@ -51,12 +63,20 @@ type CalendarEvent = {
   location?: string | null;
 };
 
+type ScheduleConflict = {
+  taskIndex: number;
+  taskTitle: string;
+  conflictsWith: string;
+  type: "calendar" | "generated" | "invalid";
+};
+
 function App() {
   const [taskText, setTaskText] = useState(
     "study ECE for an hour, reply to emails for 30 minutes"
   );
   const [scheduled, setScheduled] = useState<ScheduledTask[]>([]);
   const [unscheduled, setUnscheduled] = useState<any[]>([]);
+  const [planRules, setPlanRules] = useState<PlanRules | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [draftPreviews, setDraftPreviews] = useState<Record<string, string>>({});
@@ -65,6 +85,7 @@ function App() {
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
+  const [draggedTaskIndex, setDraggedTaskIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -114,6 +135,7 @@ function App() {
 
       setScheduled(res.data.scheduled || []);
       setUnscheduled(res.data.unscheduled || []);
+      setPlanRules(res.data.rules_applied || null);
     } catch (error) {
       console.error(error);
       alert("Failed to generate plan. Check your backend terminal.");
@@ -125,6 +147,11 @@ function App() {
   const commitPlan = async () => {
     if (scheduled.length === 0) {
       alert("Generate a plan first.");
+      return;
+    }
+
+    if (scheduleConflicts.length > 0) {
+      alert("Fix schedule conflicts before committing the full plan.");
       return;
     }
 
@@ -140,10 +167,12 @@ function App() {
       );
 
       setScheduled([]);
+      setPlanRules(null);
       await fetchCalendarEvents();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to commit plan. Check your backend terminal.");
+      const detail = error?.response?.data?.detail;
+      alert(detail?.message || "Failed to commit plan. Check your backend terminal.");
     } finally {
       setLoading(false);
     }
@@ -156,15 +185,29 @@ function App() {
   ) => {
     const updated = [...scheduled];
 
-    updated[index] = {
+    const nextTask = {
       ...updated[index],
       [field]: field === "duration_minutes" ? Number(value) : value,
     };
 
+    if (field === "duration_minutes") {
+      const start = new Date(nextTask.start);
+      nextTask.end = new Date(
+        start.getTime() + Number(value) * 60 * 1000
+      ).toISOString();
+    }
+
+    updated[index] = nextTask;
     setScheduled(updated);
   };
 
   const commitSingleTask = async (task: ScheduledTask, index: number) => {
+    const taskConflicts = getTaskConflicts(task, index);
+    if (taskConflicts.length > 0) {
+      alert("Fix this task's conflicts before committing it.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -179,11 +222,68 @@ function App() {
       setScheduled(updated);
 
       await fetchCalendarEvents();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to commit task. Check your backend terminal.");
+      const detail = error?.response?.data?.detail;
+      alert(detail?.message || "Failed to commit task. Check your backend terminal.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const removeScheduledTask = (index: number) => {
+    setScheduled((current) => current.filter((_, taskIndex) => taskIndex !== index));
+  };
+
+  const moveScheduledTask = (index: number, minutes: number) => {
+    setScheduled((current) =>
+      current.map((task, taskIndex) => {
+        if (taskIndex !== index) return task;
+
+        const start = new Date(task.start);
+        const end = new Date(task.end);
+
+        return {
+          ...task,
+          start: new Date(start.getTime() + minutes * 60 * 1000).toISOString(),
+          end: new Date(end.getTime() + minutes * 60 * 1000).toISOString(),
+        };
+      })
+    );
+  };
+
+  const placeScheduledTask = (index: number, start: Date) => {
+    setScheduled((current) =>
+      current.map((task, taskIndex) => {
+        if (taskIndex !== index) return task;
+
+        const durationMs =
+          new Date(task.end).getTime() - new Date(task.start).getTime();
+
+        return {
+          ...task,
+          start: start.toISOString(),
+          end: new Date(start.getTime() + durationMs).toISOString(),
+        };
+      })
+    );
+  };
+
+  const deleteCalendarEvent = async (event: CalendarEvent) => {
+    if (!window.confirm(`Delete "${event.title}" from Google Calendar?`)) return;
+
+    setCalendarLoading(true);
+    setCommitMessage("");
+
+    try {
+      await axios.delete(`${API_BASE}/calendar/events/${event.id}`);
+      setCommitMessage(`Deleted "${event.title}" from Google Calendar.`);
+      await fetchCalendarEvents();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete calendar event. Check your backend terminal.");
+    } finally {
+      setCalendarLoading(false);
     }
   };
 
@@ -279,6 +379,10 @@ function App() {
     return new Date(value).toISOString();
   };
 
+  const getEventTitleText = (event: CalendarEvent | ScheduledTask) => {
+    return "title" in event ? event.title : "";
+  };
+
   const getCalendarEventType = (title: string) => {
     const text = title.toLowerCase();
 
@@ -341,11 +445,242 @@ function App() {
     };
   };
 
+  const getScheduledTaskStyle = (task: ScheduledTask) => {
+    const start = new Date(task.start);
+    const end = new Date(task.end);
+
+    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    const endMinutes = end.getHours() * 60 + end.getMinutes();
+    const calendarStartMinutes = CALENDAR_START_HOUR * 60;
+
+    const top = ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
+    const height = Math.max(28, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
+    const durationMinutes = Math.max(1, endMinutes - startMinutes);
+
+    return {
+      top: `${Math.max(0, top)}px`,
+      height: `${height}px`,
+      zIndex: 12000 - durationMinutes,
+    };
+  };
+
+  const overlaps = (startA: string, endA: string, startB: string, endB: string) => {
+    return new Date(startA) < new Date(endB) && new Date(endA) > new Date(startB);
+  };
+
+  const getTaskConflicts = (task: ScheduledTask, taskIndex: number) => {
+    const conflicts: ScheduleConflict[] = [];
+
+    if (new Date(task.end) <= new Date(task.start)) {
+      conflicts.push({
+        taskIndex,
+        taskTitle: task.title,
+        conflictsWith: "its own start/end time",
+        type: "invalid",
+      });
+    }
+
+    calendarEvents.forEach((event) => {
+      if (overlaps(task.start, task.end, getEventStart(event), getEventEnd(event))) {
+        conflicts.push({
+          taskIndex,
+          taskTitle: task.title,
+          conflictsWith: event.title,
+          type: "calendar",
+        });
+      }
+    });
+
+    scheduled.forEach((otherTask, otherIndex) => {
+      if (otherIndex === taskIndex) return;
+
+      if (overlaps(task.start, task.end, otherTask.start, otherTask.end)) {
+        conflicts.push({
+          taskIndex,
+          taskTitle: task.title,
+          conflictsWith: otherTask.title,
+          type: "generated",
+        });
+      }
+    });
+
+    return conflicts;
+  };
+
+  const scheduleConflicts = scheduled.flatMap((task, index) =>
+    getTaskConflicts(task, index)
+  );
+
+  const getSmartAdjustment = (conflict: ScheduleConflict) => {
+    const task = scheduled[conflict.taskIndex];
+    const bufferMinutes = planRules?.scheduling_constraints?.buffer_minutes || 10;
+    const durationMs = new Date(task.end).getTime() - new Date(task.start).getTime();
+
+    const busyItems = [
+      ...calendarEvents.map((event) => ({
+        start: getEventStart(event),
+        end: getEventEnd(event),
+      })),
+      ...scheduled
+        .filter((_, index) => index !== conflict.taskIndex)
+        .map((item) => ({ start: item.start, end: item.end })),
+    ].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+    const overlapping = busyItems.find((item) =>
+      overlaps(task.start, task.end, item.start, item.end)
+    );
+
+    if (!overlapping) return "Try moving it by 15 minutes.";
+
+    const suggestedStart = new Date(
+      new Date(overlapping.end).getTime() + bufferMinutes * 60 * 1000
+    );
+    const suggestedEnd = new Date(suggestedStart.getTime() + durationMs);
+
+    return `Try ${formatTime(suggestedStart.toISOString())} - ${formatTime(
+      suggestedEnd.toISOString()
+    )}.`;
+  };
+
+  const getBriefingSuggestions = () => {
+    const titles = [
+      ...calendarEvents.map(getEventTitleText),
+      ...scheduled.map((task) => task.title),
+    ].join(" ").toLowerCase();
+
+    const suggestions = [];
+
+    if (titles.includes("walk") || titles.includes("run")) {
+      suggestions.push("For outdoor time, check the weather and grab comfortable layers.");
+    }
+
+    if (titles.includes("cook") || titles.includes("meal") || titles.includes("dinner")) {
+      suggestions.push("For cooking, check groceries and thaw anything frozen early.");
+    }
+
+    if (titles.includes("meeting") || titles.includes("presentation") || titles.includes("call")) {
+      suggestions.push("For meetings, review related follow-ups before the next event.");
+    }
+
+    if (scheduled.length >= 4 || calendarEvents.length >= 5) {
+      suggestions.push("Your day looks dense; leave buffer between heavier blocks.");
+    }
+
+    if (followUps.length > 0) {
+      suggestions.push(`You have ${followUps.length} Gmail follow-up${followUps.length === 1 ? "" : "s"} to review.`);
+    }
+
+    return suggestions.slice(0, 4);
+  };
+
+  const getRelatedFollowUps = (event: CalendarEvent) => {
+    const keywords = event.title
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((word) => word.length > 3);
+
+    return followUps.filter((item) => {
+      const text = `${item.subject} ${item.snippet}`.toLowerCase();
+      return keywords.some((keyword) => text.includes(keyword));
+    });
+  };
+
+  const getPrepSuggestions = (event: CalendarEvent, relatedFollowUps: FollowUp[]) => {
+    const title = event.title.toLowerCase();
+    const suggestions = [];
+
+    if (title.includes("cardio") || title.includes("core") || title.includes("workout")) {
+      suggestions.push("Warm up for 5-10 minutes, then pick 3-4 moves like planks, dead bugs, mountain climbers, bicycle crunches, or leg raises.");
+      suggestions.push("Eat protein today and bring water so the workout does not feel weirdly punishing.");
+    }
+
+    if (title.includes("grocer") || title.includes("walmart") || title.includes("shop")) {
+      suggestions.push("Check staples before you leave: protein, vegetables, fruit, breakfast items, snacks, and anything you need for dinner.");
+      suggestions.push("Open your notes or fridge quickly so you do not buy duplicates or forget the one oddly specific thing you needed.");
+    }
+
+    if (title.includes("cook") || title.includes("meal") || title.includes("dinner") || title.includes("lunch")) {
+      suggestions.push("Check whether anything frozen needs to thaw, then confirm you have protein, produce, and a carb or side ready.");
+      suggestions.push("If this is a busy day, prep the chopping or marinade early so cooking later is easy.");
+    }
+
+    if (title.includes("walk") || title.includes("run")) {
+      suggestions.push("Check the weather before heading out, pick comfortable shoes, and bring water if it is warm.");
+      suggestions.push("If it is cold or rainy, choose layers and a route that is easy to shorten.");
+    }
+
+    if (
+      title.includes("meeting") ||
+      title.includes("presentation") ||
+      title.includes("call") ||
+      title.includes("sync") ||
+      title.includes("review")
+    ) {
+      suggestions.push("Skim the agenda/title, write down your top question, and identify the decision or update you need from this event.");
+      suggestions.push(
+        relatedFollowUps.length > 0
+          ? "Review the matched Gmail follow-ups below so you can bring the latest context."
+          : "Check recent Gmail threads for this topic if you need more context before joining."
+      );
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push("Look at the title and location, then decide what you need ready before this starts.");
+      suggestions.push("Leave a small buffer beforehand so you are not switching contexts at the last second.");
+    }
+
+    return suggestions.slice(0, 3);
+  };
+
+  const handleCalendarDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (draggedTaskIndex === null) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const y = Math.max(0, event.clientY - rect.top);
+    const rawMinutes = CALENDAR_START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
+    const roundedMinutes = Math.round(rawMinutes / 15) * 15;
+
+    const existingStart = new Date(scheduled[draggedTaskIndex].start);
+    existingStart.setHours(Math.floor(roundedMinutes / 60));
+    existingStart.setMinutes(roundedMinutes % 60, 0, 0);
+
+    placeScheduledTask(draggedTaskIndex, existingStart);
+    setDraggedTaskIndex(null);
+  };
+
   const sortedCalendarEvents = [...calendarEvents].sort(
     (a, b) =>
       new Date(getEventStart(a)).getTime() -
       new Date(getEventStart(b)).getTime()
   );
+  const now = new Date();
+  const upcomingEvents = sortedCalendarEvents.filter(
+    (event) => new Date(getEventEnd(event)) >= now
+  );
+  const happeningNowEvent = sortedCalendarEvents.find(
+    (event) =>
+      new Date(getEventStart(event)) <= now && new Date(getEventEnd(event)) > now
+  );
+  const nextUpcomingEvent = sortedCalendarEvents.find(
+    (event) =>
+      new Date(getEventStart(event)) > now &&
+      event.id !== happeningNowEvent?.id
+  );
+  const briefingSuggestions = getBriefingSuggestions();
+  const meetingPrepEvents = upcomingEvents.filter((event) => {
+    const title = event.title.toLowerCase();
+    return (
+      title.includes("meeting") ||
+      title.includes("presentation") ||
+      title.includes("call") ||
+      title.includes("sync") ||
+      title.includes("review")
+    );
+  });
+  const prepEvents = meetingPrepEvents.length > 0
+    ? meetingPrepEvents.slice(0, 3)
+    : upcomingEvents.slice(0, 3);
 
   return (
     <div className="app">
@@ -384,7 +719,7 @@ function App() {
             <button
               className="secondary-btn"
               onClick={commitPlan}
-              disabled={loading || scheduled.length === 0}
+              disabled={loading || scheduled.length === 0 || scheduleConflicts.length > 0}
             >
               Commit Full Plan
             </button>
@@ -409,6 +744,109 @@ function App() {
         </section>
       </main>
 
+      <section className="dashboard intelligence-grid">
+        <div className="briefing-card">
+          <div className="section-header compact-header">
+            <div>
+              <h2>Daily Briefing</h2>
+              <p>Your day, follow-ups, and prep reminders in one pass.</p>
+            </div>
+          </div>
+
+          <div className="briefing-stats">
+            <div>
+              <strong>{calendarEvents.length}</strong>
+              <span>calendar events</span>
+            </div>
+            <div>
+              <strong>{scheduled.length}</strong>
+              <span>generated tasks</span>
+            </div>
+            <div>
+              <strong>{followUps.length}</strong>
+              <span>Gmail follow-ups</span>
+            </div>
+          </div>
+
+          {happeningNowEvent && (
+            <div className="briefing-next">
+              <span className="mini-label">Happening now</span>
+              <p>
+                <strong>{happeningNowEvent.title}</strong> until{" "}
+                {formatTime(getEventEnd(happeningNowEvent))}
+              </p>
+            </div>
+          )}
+
+          <div className="briefing-next">
+            <span className="mini-label">Next up</span>
+            {nextUpcomingEvent ? (
+              <p>
+                <strong>{nextUpcomingEvent.title}</strong> at{" "}
+                {formatTime(getEventStart(nextUpcomingEvent))}
+              </p>
+            ) : (
+              <p>
+                {happeningNowEvent
+                  ? "Nothing else is scheduled after this loaded event."
+                  : "No upcoming calendar events loaded for today."}
+              </p>
+            )}
+          </div>
+
+          <div className="briefing-list">
+            {briefingSuggestions.length === 0 ? (
+              <p>Generate a plan or load Gmail follow-ups for prep suggestions.</p>
+            ) : (
+              briefingSuggestions.map((suggestion) => (
+                <div className="briefing-item" key={suggestion}>
+                  {suggestion}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="meeting-prep-card">
+          <div className="section-header compact-header">
+            <div>
+              <h2>Meeting Prep</h2>
+              <p>Upcoming events matched with Gmail follow-up context.</p>
+            </div>
+          </div>
+
+          {prepEvents.length === 0 ? (
+            <div className="empty mini-empty">
+              Refresh Calendar to load upcoming prep targets.
+            </div>
+          ) : (
+            <div className="prep-list">
+              {prepEvents.map((event) => {
+                const relatedFollowUps = getRelatedFollowUps(event);
+                const prepSuggestions = getPrepSuggestions(event, relatedFollowUps);
+
+                return (
+                  <div className="prep-item" key={event.id}>
+                    <div>
+                      <strong>{event.title}</strong>
+                      <span>{formatTime(getEventStart(event))}</span>
+                    </div>
+                    <ul className="prep-suggestions">
+                      {prepSuggestions.map((suggestion) => (
+                        <li key={suggestion}>{suggestion}</li>
+                      ))}
+                    </ul>
+                    {relatedFollowUps.slice(0, 2).map((item) => (
+                      <small key={item.id}>{item.subject || item.snippet}</small>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="dashboard calendar-section">
         <div className="section-header">
           <h2>Today's Calendar</h2>
@@ -428,6 +866,8 @@ function App() {
 
         <div
           className="calendar-gcal-view"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handleCalendarDrop}
           style={{
             height: `${
               (CALENDAR_END_HOUR - CALENDAR_START_HOUR) * HOUR_HEIGHT
@@ -469,9 +909,37 @@ function App() {
               >
                 <div className="calendar-gcal-event-title">{event.title}</div>
                 <div className="calendar-gcal-event-time">
-                  {formatTime(getEventStart(event))} —{" "}
+                  {formatTime(getEventStart(event))} -{" "}
                   {formatTime(getEventEnd(event))}
                 </div>
+                <button
+                  className="calendar-delete-btn"
+                  onClick={() => deleteCalendarEvent(event)}
+                  disabled={calendarLoading}
+                  title="Delete calendar event"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+
+            {scheduled.map((task, index) => (
+              <div
+                className={`calendar-gcal-event generated-preview ${getCalendarEventType(
+                  task.title
+                )}`}
+                draggable
+                onDragStart={() => setDraggedTaskIndex(index)}
+                onDragEnd={() => setDraggedTaskIndex(null)}
+                style={getScheduledTaskStyle(task)}
+                key={`${task.title}-${task.start}-${index}`}
+                title="Drag to reposition before committing"
+              >
+                <div className="calendar-gcal-event-title">{task.title}</div>
+                <div className="calendar-gcal-event-time">
+                  {formatTime(task.start)} - {formatTime(task.end)}
+                </div>
+                <span className="preview-badge">Generated</span>
               </div>
             ))}
           </div>
@@ -484,9 +952,38 @@ function App() {
           <p>
             {scheduled.length === 0
               ? "Generate a plan to see editable tasks here."
-              : "Edit tasks first, then commit one task or the full schedule."}
+              : "Edit, drag, remove, or commit tasks after resolving conflicts."}
           </p>
         </div>
+
+        {planRules?.scheduling_constraints?.notes &&
+          planRules.scheduling_constraints.notes.length > 0 && (
+            <div className="constraints-card appear-in">
+              <strong>Scheduling constraints applied</strong>
+              <div>
+                {planRules.scheduling_constraints.notes.map((note) => (
+                  <span className="keyword" key={note}>
+                    {note}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+        {scheduleConflicts.length > 0 && (
+          <div className="conflict-card appear-in">
+            <h3>Conflicts to fix before committing</h3>
+            {scheduleConflicts.map((conflict, index) => (
+              <div className="conflict-item" key={`${conflict.taskTitle}-${index}`}>
+                <span>
+                  <strong>{conflict.taskTitle}</strong> overlaps with{" "}
+                  {conflict.conflictsWith}.
+                </span>
+                <em>{getSmartAdjustment(conflict)}</em>
+              </div>
+            ))}
+          </div>
+        )}
 
         {scheduled.length === 0 ? (
           <div className="empty empty-polished">
@@ -549,10 +1046,34 @@ function App() {
                   {formatTime(task.start)} - {formatTime(task.end)}
                 </p>
 
+                <div className="task-adjust-row">
+                  <button
+                    className="secondary-btn mini-action-btn"
+                    onClick={() => moveScheduledTask(index, -15)}
+                    disabled={loading}
+                  >
+                    -15m
+                  </button>
+                  <button
+                    className="secondary-btn mini-action-btn"
+                    onClick={() => moveScheduledTask(index, 15)}
+                    disabled={loading}
+                  >
+                    +15m
+                  </button>
+                  <button
+                    className="secondary-btn mini-action-btn danger-lite"
+                    onClick={() => removeScheduledTask(index)}
+                    disabled={loading}
+                  >
+                    Remove
+                  </button>
+                </div>
+
                 <button
                   className="commit-one-btn"
                   onClick={() => commitSingleTask(task, index)}
-                  disabled={loading}
+                  disabled={loading || getTaskConflicts(task, index).length > 0}
                 >
                   Commit this task
                 </button>
@@ -629,10 +1150,9 @@ function App() {
         {followUps.length === 0 ? (
           <div className="empty workspace-empty empty-polished">
             <div className="empty-icon">✉</div>
-            <h3>No follow-ups loaded yet.</h3>
+            <h3>No follow-ups detected.</h3>
             <p>
-              Click the button above and Orbit will scan recent Gmail messages
-              for possible replies.
+              Refresh to scan recent Gmail again.
             </p>
           </div>
         ) : (

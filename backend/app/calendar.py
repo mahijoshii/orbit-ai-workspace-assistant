@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_TOKEN_URL, SCOPES
@@ -237,3 +237,21 @@ def get_calendars():
         }
         for calendar in calendars
     ]
+
+
+@router.delete("/events/{event_id}")
+def delete_event(event_id: str):
+    service = get_calendar_service()
+
+    try:
+        service.events().delete(calendarId="primary", eventId=event_id).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not delete calendar event: {str(exc)}",
+        )
+
+    return {
+        "message": "Event deleted successfully",
+        "event_id": event_id,
+    }
