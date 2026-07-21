@@ -6,6 +6,12 @@ It connects with Google Calendar and Gmail to help users plan their day, detect 
 
 ---
 
+## Demo
+
+Watch the Orbit demo video: [Google Drive demo](https://drive.google.com/file/d/10GmlQxcXXxcrdee7CVkC2BMcsh3PhuQ_/view?usp=sharing)
+
+---
+
 ## Why I'm Building This
 
 Managing email, calendar events, and tasks is fragmented.
@@ -180,7 +186,7 @@ orbit-ai-workspace-assistant/
 
 ### Phase 14 - Demo
 - [ ] Add screenshots
-- [ ] Record demo video
+- [x] Record demo video
 - [ ] Add GIF to README
 - [ ] Add architecture diagram
 
@@ -316,12 +322,6 @@ Frontend:
 cd frontend
 npm run dev
 ```
-
----
-
-## Demo
-
-Coming soon.
 
 ---
 
