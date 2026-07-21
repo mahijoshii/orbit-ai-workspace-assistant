@@ -10,6 +10,21 @@ It connects with Google Calendar and Gmail to help users plan their day, detect 
 
 Watch the Orbit demo video: [Google Drive demo](https://drive.google.com/file/d/10GmlQxcXXxcrdee7CVkC2BMcsh3PhuQ_/view?usp=sharing)
 
+### Product Walkthrough
+
+| Step | Preview |
+|------|---------|
+| 1. Log in with Google to connect Calendar and Gmail. | <img src="docs/screenshots/01-login-with-google.png" alt="Orbit login with Google page" width="720"> |
+| 2. Enter a messy task dump and let Orbit prepare a plan. | <img src="docs/screenshots/02-dashboard-task-input.png" alt="Orbit dashboard with task input" width="720"> |
+| 3. Review the daily briefing, weather context, and meeting prep. | <img src="docs/screenshots/03-daily-briefing-meeting-prep.png" alt="Daily briefing and meeting prep panels" width="720"> |
+| 4. See generated tasks placed on the calendar timeline. | <img src="docs/screenshots/04-calendar-generated-blocks.png" alt="Generated tasks on today's calendar" width="720"> |
+| 5. Compare generated blocks with existing calendar events. | <img src="docs/screenshots/05-calendar-existing-events.png" alt="Calendar with generated and existing events" width="720"> |
+| 6. Edit, nudge, remove, or commit generated tasks one by one. | <img src="docs/screenshots/06-editable-generated-plan.png" alt="Editable generated plan cards" width="720"> |
+| 7. Scan Gmail for follow-ups that may need attention. | <img src="docs/screenshots/07-gmail-followup-scan.png" alt="Gmail follow-up scanning state" width="720"> |
+| 8. Review detected follow-ups and suggested reply actions. | <img src="docs/screenshots/08-gmail-followup-detected.png" alt="Detected Gmail follow-up card" width="720"> |
+| 9. Preview a Gmail draft before approving it. | <img src="docs/screenshots/09-gmail-draft-preview.png" alt="Gmail follow-up draft preview" width="720"> |
+| 10. Use the floating Orbit Assistant for quick actions. | <img src="docs/screenshots/10-orbit-assistant-panel.png" alt="Orbit Assistant quick action panel" width="720"> |
+
 ---
 
 ## Why I'm Building This
