@@ -3,7 +3,7 @@ import axios from "axios";
 import "./styles.css";
 import AssistantPanel from "./components/AssistantPanel";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const CALENDAR_START_HOUR = 8;
 const CALENDAR_END_HOUR = 22;
 const HOUR_HEIGHT = 72;
@@ -140,6 +140,8 @@ function App() {
   const [selectedStartValue, setSelectedStartValue] = useState("");
   const [selectedEndValue, setSelectedEndValue] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -157,8 +159,51 @@ function App() {
     };
   }, [loading]);
 
+  useEffect(() => {
+    const syncAuthStatus = async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const loginSucceeded = params.get("login") === "success";
+
+        if (loginSucceeded) {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+
+        const res = await axios.get(`${API_BASE}/auth/status`);
+        setIsAuthenticated(Boolean(res.data.authenticated || loginSucceeded));
+      } catch (error) {
+        console.error(error);
+        setIsAuthenticated(false);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+
+    syncAuthStatus();
+  }, []);
   const loginWithGoogle = () => {
     window.location.href = `${API_BASE}/auth/login`;
+  };
+
+  const logoutFromGoogle = async () => {
+    setCommitMessage("");
+
+    try {
+      await axios.post(`${API_BASE}/auth/logout`);
+      setCalendarEvents([]);
+      setFollowUps([]);
+      setScheduled([]);
+      setUnscheduled([]);
+      setPlanRules(null);
+      setContextResult(null);
+      setDraftPreviews({});
+      clearSelectedCalendarItem();
+      setIsAuthenticated(false);
+      setCommitMessage("");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to log out. Check your backend terminal.");
+    }
   };
 
   const fetchCalendarEvents = async () => {
@@ -175,8 +220,12 @@ function App() {
   };
 
   useEffect(() => {
-    fetchCalendarEvents();
-  }, []);
+    if (isAuthenticated) {
+      fetchCalendarEvents();
+    } else {
+      setCalendarEvents([]);
+    }
+  }, [isAuthenticated]);
 
   const fetchPreferences = async () => {
     try {
@@ -942,6 +991,41 @@ function App() {
     ? meetingPrepEvents.slice(0, 3)
     : upcomingEvents.slice(0, 3);
 
+  if (authChecking) {
+    return (
+      <div className="login-page">
+        <section className="login-card">
+          <div className="logo">Orbit</div>
+          <div className="subtitle">AI Workspace Assistant</div>
+          <p className="login-status">Checking your Google connection...</p>
+        </section>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="login-page">
+        <section className="login-card">
+          <div>
+            <div className="logo">Orbit</div>
+            <div className="subtitle">AI Workspace Assistant</div>
+          </div>
+          <div>
+            <div className="eyebrow">Google Workspace + AI planning</div>
+            <h1>Log in with Google.</h1>
+            <p>
+              Connect your Google account so Orbit can read your calendar,
+              find free time, and help prepare your day.
+            </p>
+          </div>
+          <button className="google-login-btn" onClick={loginWithGoogle}>
+            Login with Google
+          </button>
+        </section>
+      </div>
+    );
+  }
   return (
     <div className="app">
       <nav className="nav">
@@ -949,9 +1033,11 @@ function App() {
           <div className="logo">Orbit</div>
           <div className="subtitle">AI Workspace Assistant</div>
         </div>
-        <button className="secondary-btn" onClick={loginWithGoogle}>
-          Connect Google
-        </button>
+        <div className="nav-actions">
+          <button className="logout-btn" onClick={logoutFromGoogle}>
+            Logout
+          </button>
+        </div>
       </nav>
 
       <main className="hero">

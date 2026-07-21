@@ -36,6 +36,61 @@ body {
   color: #6b7280;
 }
 
+.nav-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.logout-btn {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.logout-btn:hover:not(:disabled) {
+  box-shadow: 0 10px 22px rgba(194, 65, 12, 0.12);
+}
+
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.login-card {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 28px;
+  padding: 42px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  box-shadow: 0 18px 45px rgba(31, 41, 55, 0.1);
+}
+
+.login-card h1 {
+  margin-bottom: 18px;
+}
+
+.login-card p {
+  color: #4b5563;
+  font-size: 17px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.login-status {
+  font-weight: 800;
+}
+
+.google-login-btn {
+  width: fit-content;
+  background: #111827;
+}
+
 .hero {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
